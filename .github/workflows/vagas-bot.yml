@@ -18,30 +18,15 @@ jobs:
       with:
         python-version: '3.10'
         
-    - name: Instalar Chrome estável
+    - name: Instalar Chromium (mais estável)
       run: |
         sudo apt-get update
-        sudo apt-get install -y wget
-        wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-        sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
-        rm google-chrome-stable_current_amd64.deb
-        
-    - name: Instalar ChromeDriver compatível
-      run: |
-        # Baixa ChromeDriver compatível com a versão do Chrome
-        CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
-        echo "Chrome version: $CHROME_VERSION"
-        
-        # Baixa ChromeDriver correspondente
-        wget -q "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$(echo $CHROME_VERSION | cut -d. -f1)/linux64/chromedriver-linux64.zip"
-        unzip -q chromedriver-linux64.zip
-        sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
-        sudo chmod +x /usr/local/bin/chromedriver
+        sudo apt-get install -y chromium-browser chromium-chromedriver
         
     - name: Verificar instalações
       run: |
-        echo "✅ Chrome:"
-        google-chrome --version
+        echo "✅ Chromium:"
+        chromium-browser --version
         echo "✅ ChromeDriver:"
         chromedriver --version
         
