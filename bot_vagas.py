@@ -75,86 +75,65 @@ def remover_rastros_automacao(driver):
         pass
 
 # ===========================
-# 🔍 BUSCA INDEED COM FALLBACKS
+# 🎯 FILTRO DE VAGAS DE TI MELHORADO
 # ===========================
-def buscar_vagas_indeed():
-    log_info("🌐 Buscando no Indeed...")
-    driver = None
+def filtrar_vaga_ti(titulo):
+    """Filtro mais inteligente para vagas de TI"""
+    if not titulo or len(titulo) < 5:
+        return False
     
-    try:
-        options = setup_chrome_stealth()
-        driver = webdriver.Chrome(options=options)
-        remover_rastros_automacao(driver)
-        
-        # URL alternativa mais simples
-        url = f"https://br.indeed.com/jobs?q=ti&l={LOCAL.replace(' ', '+')}"
-        log_info(f"🔗 {url}")
-        
-        driver.get(url)
-        time.sleep(random.uniform(3, 6))  # Espera aleatória
-        
-        # Tenta diferentes abordagens
-        vagas = []
-        
-        # Método 1: Seletores comuns
-        seletores = [
-            "a.jcs-JobTitle",
-            "[data-jk]",
-            ".jobTitle",
-            "a[class*='jobTitle']",
-            ".jcs-JobTitle"
-        ]
-        
-        for seletor in seletores:
-            try:
-                elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
-                if elementos:
-                    vagas = elementos
-                    log_info(f"🔍 {len(vagas)} vagas com: {seletor}")
-                    break
-            except:
-                continue
-        
-        # Método 2: Busca por texto
-        if not vagas:
-            try:
-                page_source = driver.page_source.lower()
-                if "vagas" in page_source or "emprego" in page_source:
-                    log_info("📄 Página carregou, mas não encontrou elementos")
-                else:
-                    log_info("🚫 Página pode estar bloqueada")
-            except:
-                pass
-        
-        resultados = []
-        for job in vagas[:6]:
-            try:
-                titulo = job.text.strip()
-                link = job.get_attribute("href")
-                
-                if not titulo or len(titulo) < 5:
-                    continue
-                
-                # Filtro TI
-                termos_ti = ['ti', 'tecnologia', 'desenvolvedor', 'programador', 'analista', 'software', 'sistema', 'dev', 'dados']
-                if any(termo in titulo.lower() for termo in termos_ti):
-                    resultados.append(f"**{titulo}**\n{link}")
-                    log_success(f"✅ Indeed: {titulo}")
-                    
-            except Exception as e:
-                continue
-                
-        return resultados
-        
-    except Exception as e:
-        log_error(f"Erro Indeed: {str(e)[:100]}...")
-        return []
-    finally:
-        if driver:
-            driver.quit()
+    titulo_lower = titulo.lower()
+    
+    # TERMOS POSITIVOS (TI)
+    termos_ti = [
+        'ti', 'tecnologia', 'tecnológico', 'tecnológica',
+        'desenvolvedor', 'developer', 'dev',
+        'programador', 'programadora', 'programação',
+        'analista', 'analista de', 
+        'software', 'sistema', 'sistemas',
+        'web', 'frontend', 'front-end', 'backend', 'back-end', 'fullstack', 'full stack',
+        'mobile', 'android', 'ios',
+        'java', 'python', 'javascript', 'php', 'c#', 'c++', 'ruby', 'go', 'rust',
+        'react', 'angular', 'vue', 'node', 'django', 'spring',
+        'banco de dados', 'sql', 'mysql', 'postgresql', 'mongodb',
+        'cloud', 'aws', 'azure', 'google cloud', 'devops',
+        'ux', 'ui', 'designer', 'design',
+        'dados', 'data', 'big data', 'bi', 'business intelligence',
+        'segurança', 'cyber', 'security',
+        'redes', 'infraestrutura', 'infra',
+        'suporte', 'help desk', 'service desk',
+        'qualidade', 'qa', 'teste', 'testing',
+        'scrum', 'agile', 'product owner', 'po', 'scrum master'
+    ]
+    
+    # TERMOS NEGATIVOS (não é TI)
+    termos_nao_ti = [
+        'vendedor', 'comercial', 'representante', 'consultor comercial',
+        'motorista', 'entregador', 'delivery',
+        'auxiliar', 'assistente administrativo', 'recepcionista',
+        'professor', 'educador', 'instrutor',
+        'enfermeiro', 'médico', 'fisioterapeuta',
+        'advogado', 'jurídico',
+        'contador', 'accounting',
+        'marketing', 'mídia', 'publicidade',
+        'rh', 'recursos humanos', 'human resources',
+        'financeiro', 'financeira', 'financial',
+        'administrativo', 'administração',
+        'atendente', 'caixa', 'balconista',
+        'cozinheiro', 'chef', 'garçom',
+        'estágio jurídico', 'estágio administrativo', 'estágio contábil'
+    ]
+    
+    # Verifica se tem algum termo de TI
+    tem_termo_ti = any(termo in titulo_lower for termo in termos_ti)
+    
+    # Verifica se NÃO tem termos não-TI
+    nao_tem_nao_ti = not any(termo in titulo_lower for termo in termos_nao_ti)
+    
+    return tem_termo_ti and nao_tem_nao_ti
 
 # ===========================
-# 🔍 BUSCA INFOJOBS (ALTERNATIVA AO GLASSDOOR)
+# 🔍 BUSCA INFOJOBS MELHORADA
 # ===========================
 def buscar_vagas_infojobs():
     log_info("🌐 Buscando no InfoJobs...")
@@ -186,13 +165,15 @@ def buscar_vagas_infojobs():
                 elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
                 if elementos:
                     vagas = elementos
-                    log_info(f"🔍 {len(vagas)} vagas com: {seletor}")
+                    log_info(f"🔍 {len(vagas)} vagas encontradas")
                     break
             except:
                 continue
         
         resultados = []
-        for job in vagas[:6]:
+        vagas_processadas = 0
+        
+        for job in vagas[:12]:  # Aumentei para 12 vagas
             try:
                 titulo = job.text.strip()
                 link = job.get_attribute("href")
@@ -200,15 +181,20 @@ def buscar_vagas_infojobs():
                 if not titulo or len(titulo) < 5:
                     continue
                 
-                # Filtro TI
-                termos_ti = ['ti', 'tecnologia', 'desenvolvedor', 'programador', 'analista', 'software', 'sistema', 'dev']
-                if any(termo in titulo.lower() for termo in termos_ti):
+                vagas_processadas += 1
+                
+                # Usa o filtro inteligente
+                if filtrar_vaga_ti(titulo):
                     resultados.append(f"**{titulo}**\n{link}")
                     log_success(f"✅ InfoJobs: {titulo}")
+                else:
+                    log_info(f"❌ Filtrada: {titulo}")
                     
-            except:
+            except Exception as e:
+                log_error(f"Erro processando vaga: {e}")
                 continue
-                
+        
+        log_info(f"📊 Processadas: {vagas_processadas} | Filtradas: {len(resultados)}")
         return resultados
         
     except Exception as e:
@@ -250,13 +236,15 @@ def buscar_vagas_catho():
                 elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
                 if elementos:
                     vagas = elementos
-                    log_info(f"🔍 {len(vagas)} vagas com: {seletor}")
+                    log_info(f"🔍 {len(vagas)} vagas encontradas")
                     break
             except:
                 continue
         
         resultados = []
-        for job in vagas[:6]:
+        vagas_processadas = 0
+        
+        for job in vagas[:8]:
             try:
                 titulo = job.text.strip()
                 link = job.get_attribute("href")
@@ -264,19 +252,108 @@ def buscar_vagas_catho():
                 if not titulo or len(titulo) < 5:
                     continue
                 
-                # Filtro TI
-                termos_ti = ['ti', 'tecnologia', 'desenvolvedor', 'programador', 'analista', 'software', 'sistema', 'dev']
-                if any(termo in titulo.lower() for termo in termos_ti):
+                vagas_processadas += 1
+                
+                # Usa o filtro inteligente
+                if filtrar_vaga_ti(titulo):
                     resultados.append(f"**{titulo}**\n{link}")
                     log_success(f"✅ Catho: {titulo}")
+                else:
+                    log_info(f"❌ Filtrada: {titulo}")
                     
             except:
                 continue
-                
+        
+        log_info(f"📊 Processadas: {vagas_processadas} | Filtradas: {len(resultados)}")
         return resultados
         
     except Exception as e:
         log_error(f"Erro Catho: {str(e)[:100]}...")
+        return []
+    finally:
+        if driver:
+            driver.quit()
+
+# ===========================
+# 🔍 BUSCA INDEED COM FALLBACKS
+# ===========================
+def buscar_vagas_indeed():
+    log_info("🌐 Buscando no Indeed...")
+    driver = None
+    
+    try:
+        options = setup_chrome_stealth()
+        driver = webdriver.Chrome(options=options)
+        remover_rastros_automacao(driver)
+        
+        # URL alternativa mais simples
+        url = f"https://br.indeed.com/jobs?q=ti&l={LOCAL.replace(' ', '+')}"
+        log_info(f"🔗 {url}")
+        
+        driver.get(url)
+        time.sleep(random.uniform(3, 6))  # Espera aleatória
+        
+        # Tenta diferentes abordagens
+        vagas = []
+        
+        # Método 1: Seletores comuns
+        seletores = [
+            "a.jcs-JobTitle",
+            "[data-jk]",
+            ".jobTitle",
+            "a[class*='jobTitle']",
+            ".jcs-JobTitle"
+        ]
+        
+        for seletor in seletores:
+            try:
+                elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
+                if elementos:
+                    vagas = elementos
+                    log_info(f"🔍 {len(vagas)} vagas encontradas")
+                    break
+            except:
+                continue
+        
+        # Método 2: Busca por texto
+        if not vagas:
+            try:
+                page_source = driver.page_source.lower()
+                if "vagas" in page_source or "emprego" in page_source:
+                    log_info("📄 Página carregou, mas não encontrou elementos")
+                else:
+                    log_info("🚫 Página pode estar bloqueada")
+            except:
+                pass
+        
+        resultados = []
+        vagas_processadas = 0
+        
+        for job in vagas[:8]:
+            try:
+                titulo = job.text.strip()
+                link = job.get_attribute("href")
+                
+                if not titulo or len(titulo) < 5:
+                    continue
+                
+                vagas_processadas += 1
+                
+                # Usa o filtro inteligente
+                if filtrar_vaga_ti(titulo):
+                    resultados.append(f"**{titulo}**\n{link}")
+                    log_success(f"✅ Indeed: {titulo}")
+                else:
+                    log_info(f"❌ Filtrada: {titulo}")
+                    
+            except Exception as e:
+                continue
+        
+        log_info(f"📊 Processadas: {vagas_processadas} | Filtradas: {len(resultados)}")
+        return resultados
+        
+    except Exception as e:
+        log_error(f"Erro Indeed: {str(e)[:100]}...")
         return []
     finally:
         if driver:
