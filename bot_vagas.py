@@ -44,57 +44,18 @@ load_dotenv()
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 # Local padrão
 LOCAL = os.getenv("LOCAL", "Salvador, BA")
-# ADICIONADO: Configurações Glassdoor
-GLASSDOOR_EMAIL = os.getenv("GLASSDOOR_EMAIL")  # Opcional para login
-GLASSDOOR_PASSWORD = os.getenv("GLASSDOOR_PASSWORD")  # Opcional para login
 
-# Novas configurações do .env
-MAX_VAGAS_POR_PLATAFORMA = int(os.getenv("MAX_VAGAS_POR_PLATAFORMA", "8"))
-INTERVALO_BUSCA_MINUTOS = int(os.getenv("INTERVALO_BUSCA_MINUTOS", "60"))
-TENTATIVAS_BUSCA = int(os.getenv("TENTATIVAS_BUSCA", "3"))
-TIMEOUT_PAGINA = int(os.getenv("TIMEOUT_PAGINA", "30"))
-GRUPO_MENSAGEM_DISCORD = int(os.getenv("GRUPO_MENSAGEM_DISCORD", "2"))
+# Configurações do .env
+MAX_VAGAS_POR_PLATAFORMA = int(os.getenv("MAX_VAGAS_POR_PLATAFORMA", "6"))
+INTERVALO_BUSCA_MINUTOS = int(os.getenv("INTERVALO_BUSCA_MINUTOS", "180"))
+TENTATIVAS_BUSCA = int(os.getenv("TENTATIVAS_BUSCA", "2"))
+TIMEOUT_PAGINA = int(os.getenv("TIMEOUT_PAGINA", "25"))
+GRUPO_MENSAGEM_DISCORD = int(os.getenv("GRUPO_MENSAGEM_DISCORD", "3"))
 
 # Termos que queremos procurar
 PALAVRAS_CHAVE = ["junior", "assistente", "auxiliar", "desenvolvedor", "programador", "TI", "tecnologia", "sistema", "software", "analista"]
 # Termos para filtrar vagas de TI
 TERMOS_TI = ["TI", "tecnologia", "desenvolvedor", "programador", "sistema", "software", "analista", "dados", "web", "mobile", "backend", "frontend", "dev", "engenharia", "computação"]
-
-# ===========================
-# ⚠️ CONFIGURAÇÕES DE SEGURANÇA
-# ===========================
-REQUESTS_POR_HORA = 4  # Máximo de buscas por hora
-ULTIMA_EXECUCAO = 0
-
-# ===========================
-# 🛡️ FUNÇÕES ANTI-DETECÇÃO
-# ===========================
-def verificar_limite_requisicoes():
-    """Controla rate limiting para evitar muitas requisições"""
-    global ULTIMA_EXECUCAO
-    agora = time.time()
-    
-    if agora - ULTIMA_EXECUCAO < (3600 / REQUESTS_POR_HORA):
-        espera = (3600 / REQUESTS_POR_HORA) - (agora - ULTIMA_EXECUCAO)
-        log_info(f"⏳ Rate limiting: aguardando {espera:.1f} segundos")
-        time.sleep(espera)
-    
-    ULTIMA_EXECUCAO = time.time()
-
-def configurar_proxy(options):
-    """Configura proxy para rotacionar IPs (opcional)"""
-    # Lista de proxies gratuitos (atualize regularmente)
-    proxies = [
-        # "ip:porta",  # Adicione proxies aqui
-        # "192.168.1.1:8080",
-    ]
-    
-    if proxies:
-        proxy = random.choice(proxies)
-        options.add_argument(f"--proxy-server={proxy}")
-        log_info(f"🔒 Usando proxy: {proxy}")
-    else:
-        log_debug("ℹ️  Nenhum proxy configurado - usando IP real")
 
 # ===========================
 # 📝 CONFIGURAÇÃO DE LOGS
@@ -105,7 +66,6 @@ def setup_logging():
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('vagas_bot.log', encoding='utf-8'),
             logging.StreamHandler()
         ]
     )
@@ -221,9 +181,6 @@ def configurar_navegador_avancado():
         "profile.managed_default_content_settings.images": 2,  # Reduz carregamento de imagens
     })
     
-    # Configura proxy (opcional)
-    configurar_proxy(options)
-    
     return options
 
 def remover_rastros_automacao(driver):
@@ -284,10 +241,8 @@ def comportamento_humano_avancado(driver):
     except Exception as e:
         log_error(f"❌ Erro no comportamento humano: {e}")
 
-
-
 # ===========================
-# 🔍 FUNÇÃO: Buscar vagas no Indeed (Versão Corrigida)
+# 🔍 FUNÇÃO: Buscar vagas no Indeed
 # ===========================
 def buscar_vagas_indeed():
     log_info("🌐 Iniciando busca no Indeed...")
@@ -296,9 +251,6 @@ def buscar_vagas_indeed():
     driver = None
     
     try:
-        # Rate limiting
-        verificar_limite_requisicoes()
-
         # Configuração avançada do navegador
         options = setup_chrome_github_actions()
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
@@ -381,7 +333,7 @@ def buscar_vagas_indeed():
     return vagas_encontradas
 
 # ===========================
-# 🔍 FUNÇÃO: Buscar vagas no Glassdoor (Versão Corrigida)
+# 🔍 FUNÇÃO: Buscar vagas no Glassdoor
 # ===========================
 def buscar_vagas_glassdoor():
     log_info("🌐 Iniciando busca no Glassdoor...")
@@ -390,9 +342,6 @@ def buscar_vagas_glassdoor():
     driver = None
     
     try:
-        # Rate limiting
-        verificar_limite_requisicoes()
-
         # Configuração avançada do navegador
         options = setup_chrome_github_actions()
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
@@ -520,7 +469,7 @@ def buscar_vagas_glassdoor():
     return vagas_encontradas
     
 # ===========================
-# 🚀 FUNÇÃO: Enviar mensagem para o Discord (Melhorada)
+# 🚀 FUNÇÃO: Enviar mensagem para o Discord
 # ===========================
 def enviar_discord(vagas):
     """Envia vagas para o Discord com tratamento robusto de erros"""
@@ -622,10 +571,10 @@ def main():
     log_info("🔍 Iniciando buscas nas plataformas...")
     
     vagas_indeed = buscar_vagas_com_tentativas(buscar_vagas_indeed, "Indeed")
-    vagas_glassdoor = buscar_vagas_com_tentativas(buscar_vagas_glassdoor, "Glassdoor")  # SUBSTITUÍDO
+    vagas_glassdoor = buscar_vagas_com_tentativas(buscar_vagas_glassdoor, "Glassdoor")
     
     # Combina resultados
-    todas_vagas = vagas_indeed + vagas_glassdoor  # ATUALIZADO
+    todas_vagas = vagas_indeed + vagas_glassdoor
     
     if not todas_vagas:
         log_info("📭 Nenhuma vaga encontrada em nenhuma plataforma")
@@ -661,7 +610,7 @@ def main():
     log_info("=" * 50)
     log_info("📊 ESTATÍSTICAS DA BUSCA:")
     log_info(f"   • Indeed: {len(vagas_indeed)} vagas")
-    log_info(f"   • Glassdoor: {len(vagas_glassdoor)} vagas")  # ATUALIZADO
+    log_info(f"   • Glassdoor: {len(vagas_glassdoor)} vagas")
     log_info(f"   • Total bruto: {len(todas_vagas)} vagas")
     log_info(f"   • Total único: {len(vagas_unicas)} vagas")
     log_info(f"   • Tempo de execução: {tempo_execucao:.2f} segundos")
@@ -675,223 +624,20 @@ def main():
     return True
 
 # ===========================
-# 🚀 MAIN AUTOMATIZADA
-# ===========================
-
-def main_automatizada(historico_vagas=None):
-    """Versão da main para execução automatizada que retorna vagas novas"""
-    if historico_vagas is None:
-        historico_vagas = set()
-    
-    log_info("🤖 Execução automatizada iniciada...")
-    
-    # Valida configurações essenciais
-    if not DISCORD_WEBHOOK_URL:
-        log_error("DISCORD_WEBHOOK_URL não configurada!")
-        return set()
-    
-    # Busca vagas
-    vagas_indeed = buscar_vagas_com_tentativas(buscar_vagas_indeed, "Indeed")
-    vagas_glassdoor = buscar_vagas_com_tentativas(buscar_vagas_glassdoor, "Glassdoor")
-    
-    # Combina resultados
-    todas_vagas = vagas_indeed + vagas_glassdoor
-    
-    if not todas_vagas:
-        log_info("📭 Nenhuma vaga encontrada")
-        enviar_discord([])
-        return set()
-    
-    # Filtra vagas novas
-    vagas_novas = []
-    for vaga in todas_vagas:
-        # Cria um hash simples da vaga para comparação
-        vaga_hash = hash(vaga.split('\n')[0])  # Hash do título
-        
-        if vaga_hash not in historico_vagas:
-            vagas_novas.append(vaga)
-            historico_vagas.add(vaga_hash)
-    
-    # Envia apenas vagas novas para o Discord
-    if vagas_novas:
-        log_info(f"🎯 {len(vagas_novas)} vagas NOVAS encontradas!")
-        enviar_discord(vagas_novas)
-    else:
-        log_info("🔄 Nenhuma vaga nova encontrada")
-        # Opcional: enviar mensagem de "sem novidades" a cada 12 execuções
-        if len(historico_vagas) > 0 and random.random() < 0.08:  # ~8% de chance
-            enviar_discord(["🔍 Nenhuma vaga nova encontrada na última verificação. O bot continua monitorando..."])
-    
-    return set([hash(vaga.split('\n')[0]) for vaga in vagas_novas])
-
-def obter_proximo_horario_otimizado():
-    """Retorna horários otimizados para busca baseado em padrões"""
-    agora = datetime.now()
-    hora = agora.hour
-    
-    # Horários preferenciais (maior chance de vagas frescas)
-    horarios_otimizados = [
-        9, 10, 11,    # Manhã - início do expediente
-        14, 15, 16,   # Tarde - após almoço
-        17, 18        # Final da tarde - fechamento
-    ]
-    
-    # Encontra o próximo horário ideal
-    for horario in horarios_otimizados:
-        if hora < horario:
-            return horario
-    
-    # Se passou todos, usa o primeiro do próximo dia
-    return horarios_otimizados[0]
-
-# ===========================
-#  AGENDAMENTO INTELIGENTE
-# ===========================
-
-def executar_com_agendamento_inteligente():
-    """Executa com agendamento baseado em horários otimizados"""
-    log_info("🧠 Modo agendamento inteligente ativado")
-    
-    historico_vagas = set()
-    contador_execucoes = 0
-    
-    while True:
-        try:
-            contador_execucoes += 1
-            proximo_horario = obter_proximo_horario_otimizado()
-            agora = datetime.now()
-            
-            # Calcula segundos até o próximo horário
-            if agora.hour < proximo_horario:
-                # Executa hoje
-                proxima_execucao = agora.replace(hour=proximo_horario, minute=0, second=0, microsecond=0)
-            else:
-                # Executa amanhã
-                amanha = agora + timedelta(days=1)
-                proxima_execucao = amanha.replace(hour=proximo_horario, minute=0, second=0, microsecond=0)
-            
-            segundos_espera = (proxima_execucao - agora).total_seconds()
-            
-            log_info(f"🔄 Execução #{contador_execucoes} agendada para: {proxima_execucao.strftime('%d/%m/%Y %H:%M')}")
-            log_info(f"⏰ Aguardando {segundos_espera/3600:.1f} horas...")
-            
-            # Aguarda até o horário agendado (com verificações periódicas)
-            while segundos_espera > 0:
-                # Verifica a cada 30min se não foi interrompido
-                tempo_espera = min(1800, segundos_espera)  # Máximo 30min
-                time.sleep(tempo_espera)
-                segundos_espera -= tempo_espera
-                
-                if segundos_espera > 0:
-                    log_debug(f"⏳ Faltam {segundos_espera/60:.0f} minutos...")
-            
-            # Executa a busca
-            log_info("🎯 Iniciando busca agendada...")
-            novas_vagas = main_automatizada(historico_vagas)
-            historico_vagas.update(novas_vagas)
-            
-        except KeyboardInterrupt:
-            log_info("🛑 Execução interrompida pelo usuário")
-            break
-        except Exception as e:
-            log_error(f"💥 Erro no agendamento: {e}")
-            time.sleep(300)  # 5min em caso de erro
-            
-# ===========================
-# 🔄 EXECUÇÃO CONTÍNUA
-# ===========================
-def executar_continuamente():
-    """Executa o bot em intervalos regulares de forma inteligente"""
-    log_info("🔄 Modo de execução contínua ativado")
-    log_info(f"⏰ Intervalo entre buscas: {INTERVALO_BUSCA_MINUTOS} minutos")
-    
-    contador_execucoes = 0
-    historico_vagas = set()  # Para evitar duplicatas entre execuções
-    
-    while True:
-        try:
-            contador_execucoes += 1
-            log_info(f"🔄 Execução #{contador_execucoes}")
-            log_info("-" * 50)
-            
-            # Horário inteligente - evita horários de pico
-            agora = datetime.now()
-            hora_atual = agora.hour
-            
-            # Não executa entre 2h e 6h (menor tráfego)
-            if 2 <= hora_atual <= 6:
-                espera_ate = 7 - hora_atual
-                log_info(f"🌙 Modo noturno: aguardando até 7h ({espera_ate}h)")
-                time.sleep(espera_ate * 3600)
-                continue
-            
-            # Executa a busca principal
-            vagas_novas = main_automatizada(historico_vagas)
-            
-            # Atualiza histórico
-            historico_vagas.update(vagas_novas)
-            
-            # Calcula próximo horário de execução com variação aleatória
-            variacao = random.randint(-10, 10)  # ±10 minutos
-            intervalo_com_variacao = max(30, INTERVALO_BUSCA_MINUTOS + variacao)  # Mínimo 30min
-            
-            proxima_execucao = datetime.now().timestamp() + (intervalo_com_variacao * 60)
-            proxima_str = datetime.fromtimestamp(proxima_execucao).strftime('%d/%m/%Y %H:%M:%S')
-            
-            log_info(f"✅ Execução #{contador_execucoes} concluída")
-            log_info(f"📊 Vagas novas encontradas: {len(vagas_novas)}")
-            log_info(f"⏰ Próxima execução: {proxima_str} ({intervalo_com_variacao}min)")
-            log_info("=" * 50)
-            
-            # Aguarda intervalo
-            time.sleep(intervalo_com_variacao * 60)
-            
-        except KeyboardInterrupt:
-            log_info("🛑 Execução interrompida pelo usuário")
-            break
-            
-        except Exception as e:
-            log_error(f"💥 Erro crítico na execução: {e}")
-            log_info("💤 Aguardando 10 minutos antes de tentar novamente...")
-            time.sleep(600)  # 10 minutos em caso de erro crítico
-
-# ===========================
 # 🚀 PONTO DE INÍCIO
 # ===========================
 if __name__ == "__main__":
     """
     Modos de execução:
-    - python bot_vagas.py                      (execução única)
-    - python bot_vagas.py --continuous         (execução contínua) ← AGORA FUNCIONA
-    - python bot_vagas.py --scheduled          (agendamento inteligente)
-    - python bot_vagas.py --test               (modo teste)
+    - python bot_vagas.py (execução única)
     """
     
     # Configura logging
     setup_logging()
     
-    # Verifica argumentos
-    import sys
-    args = sys.argv[1:]
-    
     try:
-        if "--test" in args or "-t" in args:
-            log_info("🧪 Modo teste ativado")
-            # Testa apenas uma plataforma rapidamente
-            test_vagas = buscar_vagas_com_tentativas(buscar_vagas_indeed, "Indeed TESTE")
-            log_info(f"🧪 Resultado teste: {len(test_vagas)} vagas")
-            
-        elif "--scheduled" in args or "-s" in args:
-            log_info("🧠 Iniciando Bot com Agendamento Inteligente")
-            executar_com_agendamento_inteligente()
-            
-        elif "--continuous" in args or "-c" in args:
-            log_info("🔄 Iniciando Bot em Modo Contínuo")
-            executar_continuamente()  # ← CHAMA A FUNÇÃO DE EXECUÇÃO CONTÍNUA
-            
-        else:
-            log_info("🎯 Iniciando Busca Única")
-            main()
+        log_info("🎯 Iniciando Busca Única")
+        main()
             
     except KeyboardInterrupt:
         log_info("👋 Execução interrompida pelo usuário")
