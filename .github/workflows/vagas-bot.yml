@@ -1,9 +1,8 @@
 name: Bot Vagas TI
 on:
   schedule:
-    # Horários UTC: 11h, 14h, 17h, 20h, 23h (8h, 11h, 14h, 17h, 20h Brasília)
     - cron: '0 11,14,17,20,23 * * *'
-  workflow_dispatch:  # Permite executar manualmente
+  workflow_dispatch:
 
 jobs:
   buscar-vagas:
@@ -19,34 +18,19 @@ jobs:
       with:
         python-version: '3.10'
         
-    - name: Instalar Chrome e dependências
+    - name: Usar Chrome existente
       run: |
+        # Usa o Chrome que já vem no Ubuntu
         sudo apt-get update
-        sudo apt-get install -y wget gnupg
-        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-        
-    - name: Verificar instalação do Chrome
-      run: |
-        google-chrome --version
-        which google-chrome
+        sudo apt-get install -y chromium-browser
         
     - name: Instalar dependências Python
       run: |
-        python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Executar Bot de Vagas
+    - name: Executar Bot
       env:
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         LOCAL: "Salvador, BA"
-        MAX_VAGAS_POR_PLATAFORMA: "6"
-        TENTATIVAS_BUSCA: "2"
-        TIMEOUT_PAGINA: "25"
-        GRUPO_MENSAGEM_DISCORD: "3"
       run: |
-        echo "🚀 Iniciando bot de vagas..."
         python bot_vagas.py
-        echo "✅ Execução concluída!"
