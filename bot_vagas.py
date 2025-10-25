@@ -3,6 +3,7 @@
 # ===========================
 import os
 import time
+import random
 import logging
 import requests
 from selenium import webdriver
@@ -35,58 +36,76 @@ def log_error(message): logging.error(f"❌ {message}")
 def log_success(message): logging.info(f"✅ {message}")
 
 # ===========================
-# 🛠️ CONFIGURAÇÃO CHROME
+# 🛠️ CONFIGURAÇÃO CHROME STEALTH
 # ===========================
-def setup_chrome():
-    """Configuração para Chromium"""
+def setup_chrome_stealth():
+    """Configuração stealth para evitar detecção"""
     options = Options()
+    
+    # Configurações básicas
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
-    options.add_argument("--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36")
+    
+    # Configurações stealth
+    options.add_argument("--disable-blink-features=AutomationControlled")
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+    
+    # User agents realistas (rotaciona)
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    ]
+    options.add_argument(f"--user-agent={random.choice(user_agents)}")
     
     # Para Chromium
     options.binary_location = "/usr/bin/chromium-browser"
     
     return options
 
+def remover_rastros_automacao(driver):
+    """Remove rastros de automação"""
+    try:
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+    except:
+        pass
+
 # ===========================
-# 🔍 BUSCA INDEED MELHORADA
+# 🔍 BUSCA INDEED COM FALLBACKS
 # ===========================
 def buscar_vagas_indeed():
     log_info("🌐 Buscando no Indeed...")
     driver = None
     
     try:
-        options = setup_chrome()
+        options = setup_chrome_stealth()
         driver = webdriver.Chrome(options=options)
+        remover_rastros_automacao(driver)
         
-        # URL melhorada
-        url = f"https://br.indeed.com/jobs?q=desenvolvedor+programador+ti&l={LOCAL.replace(' ', '+')}"
+        # URL alternativa mais simples
+        url = f"https://br.indeed.com/jobs?q=ti&l={LOCAL.replace(' ', '+')}"
         log_info(f"🔗 {url}")
         
         driver.get(url)
+        time.sleep(random.uniform(3, 6))  # Espera aleatória
         
-        # Espera mais inteligente
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, ".job_seen_beacon"))
-        )
+        # Tenta diferentes abordagens
+        vagas = []
         
-        time.sleep(3)
-        
-        # MÚLTIPLOS seletores para Indeed
-        seletores_indeed = [
+        # Método 1: Seletores comuns
+        seletores = [
             "a.jcs-JobTitle",
             "[data-jk]",
             ".jobTitle",
-            ".jcs-JobTitle",
-            "a[data-jk]"
+            "a[class*='jobTitle']",
+            ".jcs-JobTitle"
         ]
         
-        vagas = []
-        for seletor in seletores_indeed:
+        for seletor in seletores:
             try:
                 elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
                 if elementos:
@@ -96,119 +115,168 @@ def buscar_vagas_indeed():
             except:
                 continue
         
-        resultados = []
-        for job in vagas[:8]:
-            try:
-                titulo = job.text.strip()
-                link = job.get_attribute("href")
-                
-                if not titulo or not link:
-                    continue
-                    
-                # Log para debug
-                log_info(f"📌 Vaga: {titulo[:50]}...")
-                
-                # Filtro mais amplo
-                termos_ti = ['ti', 'tecnologia', 'desenvolvedor', 'programador', 'analista', 'software', 'sistema', 'dev', 'web']
-                titulo_lower = titulo.lower()
-                
-                if any(termo in titulo_lower for termo in termos_ti):
-                    resultados.append(f"**{titulo}**\n{link}")
-                    log_success(f"✅ Indeed: {titulo}")
-                    
-            except Exception as e:
-                log_error(f"Erro vaga: {e}")
-                continue
-                
-        return resultados
-        
-    except Exception as e:
-        log_error(f"Erro Indeed: {e}")
-        return []
-    finally:
-        if driver:
-            driver.quit()
-
-# ===========================
-# 🔍 BUSCA GLASSDOOR MELHORADA
-# ===========================
-def buscar_vagas_glassdoor():
-    log_info("🌐 Buscando no Glassdoor...")
-    driver = None
-    
-    try:
-        options = setup_chrome()
-        driver = webdriver.Chrome(options=options)
-        
-        # URL mais simples
-        url = f"https://www.glassdoor.com.br/Emprego/{LOCAL.replace(' ', '-')}-vagas-SRCH_IL.0,9_IC2348682.htm"
-        log_info(f"🔗 {url}")
-        
-        driver.get(url)
-        time.sleep(8)  # Mais tempo para carregar
-        
-        # MÚLTIPLOS seletores para Glassdoor
-        seletores_glassdoor = [
-            "a[data-test='job-link']",
-            ".jobLink",
-            "[data-test='job-title']",
-            "a.jobLink",
-            ".job-title",
-            "a[href*='/job-listing/']"
-        ]
-        
-        vagas = []
-        for seletor in seletores_glassdoor:
-            try:
-                elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
-                if elementos:
-                    vagas = elementos
-                    log_info(f"🔍 {len(vagas)} vagas com: {seletor}")
-                    break
-            except:
-                continue
-        
-        # Se não encontrou, tenta buscar qualquer link que pareça vaga
+        # Método 2: Busca por texto
         if not vagas:
-            todos_links = driver.find_elements(By.CSS_SELECTOR, "a")
-            for link in todos_links:
-                href = link.get_attribute("href") or ""
-                if "/job-listing/" in href or "/Vaga/" in href:
-                    vagas.append(link)
-            log_info(f"🔍 {len(vagas)} vagas encontradas por URL")
+            try:
+                page_source = driver.page_source.lower()
+                if "vagas" in page_source or "emprego" in page_source:
+                    log_info("📄 Página carregou, mas não encontrou elementos")
+                else:
+                    log_info("🚫 Página pode estar bloqueada")
+            except:
+                pass
         
         resultados = []
-        for job in vagas[:8]:
+        for job in vagas[:6]:
             try:
                 titulo = job.text.strip()
                 link = job.get_attribute("href")
                 
                 if not titulo or len(titulo) < 5:
                     continue
-                    
-                # Log para debug
-                log_info(f"📌 Vaga Glassdoor: {titulo[:50]}...")
                 
-                # Garante link completo
-                if link and link.startswith('/'):
-                    link = f"https://www.glassdoor.com.br{link}"
-                
-                # Filtro mais amplo
-                termos_ti = ['ti', 'tecnologia', 'desenvolvedor', 'programador', 'analista', 'software', 'sistema', 'dev']
-                titulo_lower = titulo.lower()
-                
-                if any(termo in titulo_lower for termo in termos_ti):
+                # Filtro TI
+                termos_ti = ['ti', 'tecnologia', 'desenvolvedor', 'programador', 'analista', 'software', 'sistema', 'dev', 'dados']
+                if any(termo in titulo.lower() for termo in termos_ti):
                     resultados.append(f"**{titulo}**\n{link}")
-                    log_success(f"✅ Glassdoor: {titulo}")
+                    log_success(f"✅ Indeed: {titulo}")
                     
             except Exception as e:
-                log_error(f"Erro vaga Glassdoor: {e}")
                 continue
                 
         return resultados
         
     except Exception as e:
-        log_error(f"Erro Glassdoor: {e}")
+        log_error(f"Erro Indeed: {str(e)[:100]}...")
+        return []
+    finally:
+        if driver:
+            driver.quit()
+
+# ===========================
+# 🔍 BUSCA INFOJOBS (ALTERNATIVA AO GLASSDOOR)
+# ===========================
+def buscar_vagas_infojobs():
+    log_info("🌐 Buscando no InfoJobs...")
+    driver = None
+    
+    try:
+        options = setup_chrome_stealth()
+        driver = webdriver.Chrome(options=options)
+        remover_rastros_automacao(driver)
+        
+        # InfoJobs é mais acessível
+        url = f"https://www.infojobs.com.br/vagas-de-emprego-{LOCAL.replace(',', '').replace(' ', '-').lower()}.aspx?palabra=desenvolvedor"
+        log_info(f"🔗 {url}")
+        
+        driver.get(url)
+        time.sleep(random.uniform(4, 7))
+        
+        # Seletores InfoJobs
+        seletores = [
+            "a.js_vacancyTitle",
+            ".vacancy-title a",
+            "[data-vacancy-title]",
+            "a[href*='/vagas']"
+        ]
+        
+        vagas = []
+        for seletor in seletores:
+            try:
+                elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
+                if elementos:
+                    vagas = elementos
+                    log_info(f"🔍 {len(vagas)} vagas com: {seletor}")
+                    break
+            except:
+                continue
+        
+        resultados = []
+        for job in vagas[:6]:
+            try:
+                titulo = job.text.strip()
+                link = job.get_attribute("href")
+                
+                if not titulo or len(titulo) < 5:
+                    continue
+                
+                # Filtro TI
+                termos_ti = ['ti', 'tecnologia', 'desenvolvedor', 'programador', 'analista', 'software', 'sistema', 'dev']
+                if any(termo in titulo.lower() for termo in termos_ti):
+                    resultados.append(f"**{titulo}**\n{link}")
+                    log_success(f"✅ InfoJobs: {titulo}")
+                    
+            except:
+                continue
+                
+        return resultados
+        
+    except Exception as e:
+        log_error(f"Erro InfoJobs: {str(e)[:100]}...")
+        return []
+    finally:
+        if driver:
+            driver.quit()
+
+# ===========================
+# 🔍 BUSCA CATHO (ALTERNATIVA)
+# ===========================
+def buscar_vagas_catho():
+    log_info("🌐 Buscando na Catho...")
+    driver = None
+    
+    try:
+        options = setup_chrome_stealth()
+        driver = webdriver.Chrome(options=options)
+        remover_rastros_automacao(driver)
+        
+        url = f"https://www.catho.com.br/vagas/{LOCAL.replace(' ', '-').lower()}/?q=desenvolvedor"
+        log_info(f"🔗 {url}")
+        
+        driver.get(url)
+        time.sleep(random.uniform(4, 7))
+        
+        # Seletores Catho
+        seletores = [
+            "a[data-testid*='job']",
+            ".job-card a",
+            "[data-id*='job']",
+            "a[href*='/vaga/']"
+        ]
+        
+        vagas = []
+        for seletor in seletores:
+            try:
+                elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
+                if elementos:
+                    vagas = elementos
+                    log_info(f"🔍 {len(vagas)} vagas com: {seletor}")
+                    break
+            except:
+                continue
+        
+        resultados = []
+        for job in vagas[:6]:
+            try:
+                titulo = job.text.strip()
+                link = job.get_attribute("href")
+                
+                if not titulo or len(titulo) < 5:
+                    continue
+                
+                # Filtro TI
+                termos_ti = ['ti', 'tecnologia', 'desenvolvedor', 'programador', 'analista', 'software', 'sistema', 'dev']
+                if any(termo in titulo.lower() for termo in termos_ti):
+                    resultados.append(f"**{titulo}**\n{link}")
+                    log_success(f"✅ Catho: {titulo}")
+                    
+            except:
+                continue
+                
+        return resultados
+        
+    except Exception as e:
+        log_error(f"Erro Catho: {str(e)[:100]}...")
         return []
     finally:
         if driver:
@@ -220,11 +288,10 @@ def buscar_vagas_glassdoor():
 def enviar_discord(vagas):
     if not vagas:
         log_info("📭 Nenhuma vaga para enviar")
-        # Envia mensagem informativa
         try:
             if DISCORD_WEBHOOK_URL:
                 requests.post(DISCORD_WEBHOOK_URL, 
-                            json={"content": f"🔍 Nenhuma vaga de TI encontrada em {LOCAL} hoje."}, 
+                            json={"content": f"🔍 Nenhuma vaga de TI encontrada em {LOCAL} na busca de hoje."}, 
                             timeout=10)
         except:
             pass
@@ -249,19 +316,23 @@ def main():
         log_error("❌ Discord webhook não configurado")
         return
     
-    # Busca em ambas as plataformas
-    vagas_indeed = buscar_vagas_indeed()
-    vagas_glassdoor = buscar_vagas_glassdoor()
+    # Busca em MÚLTIPLAS plataformas (fallbacks)
+    log_info("🔄 Testando diferentes plataformas...")
     
-    # Combina resultados
-    todas_vagas = vagas_indeed + vagas_glassdoor
+    vagas_indeed = buscar_vagas_indeed()
+    vagas_infojobs = buscar_vagas_infojobs()
+    vagas_catho = buscar_vagas_catho()
+    
+    # Combina todos os resultados
+    todas_vagas = vagas_indeed + vagas_infojobs + vagas_catho
     
     if todas_vagas:
         log_success(f"🎯 Total: {len(todas_vagas)} vagas encontradas")
+        log_info(f"📊 Indeed: {len(vagas_indeed)} | InfoJobs: {len(vagas_infojobs)} | Catho: {len(vagas_catho)}")
         enviar_discord(todas_vagas)
     else:
-        log_info("📭 Nenhuma vaga encontrada")
-        enviar_discord([])  # Envia mensagem de "nenhuma vaga"
+        log_info("📭 Nenhuma vaga encontrada em nenhuma plataforma")
+        enviar_discord([])
     
     log_success("🏁 Busca concluída!")
 
