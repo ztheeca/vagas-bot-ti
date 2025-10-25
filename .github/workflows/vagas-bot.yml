@@ -1,14 +1,14 @@
 name: Bot Vagas TI
 on:
   schedule:
-    # Executa às 9h, 12h, 15h, 18h (horário UTC = 6h, 9h, 12h, 15h Brasília)
-    - cron: '0 9,12,15,18 * * *'
+    # Horários UTC: 11h, 14h, 17h, 20h, 23h (8h, 11h, 14h, 17h, 20h Brasília)
+    - cron: '0 11,14,17,20,23 * * *'
   workflow_dispatch:  # Permite executar manualmente
 
 jobs:
   buscar-vagas:
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # Timeout de 15 minutos
+    timeout-minutes: 10  # Reduzido para 10 minutos
     
     steps:
     - name: Checkout do código
@@ -26,16 +26,18 @@ jobs:
         
     - name: Instalar dependências Python
       run: |
+        python -m pip install --upgrade pip
         pip install -r requirements.txt
         
     - name: Executar Bot de Vagas
       env:
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         LOCAL: "Salvador, BA"
-        MAX_VAGAS_POR_PLATAFORMA: "5"
+        MAX_VAGAS_POR_PLATAFORMA: "6"
         TENTATIVAS_BUSCA: "2"
         TIMEOUT_PAGINA: "25"
-        INTERVALO_BUSCA_MINUTOS: "180"
-        REQUESTS_POR_HORA: "10"
+        GRUPO_MENSAGEM_DISCORD: "3"
       run: |
+        echo "🚀 Iniciando bot de vagas..."
         python bot_vagas.py
+        echo "✅ Execução concluída!"
