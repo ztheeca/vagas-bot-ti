@@ -39,28 +39,33 @@ def log_success(message): logging.info(f"✅ {message}")
 # 🛠️ CONFIGURAÇÃO CHROME STEALTH
 # ===========================
 def setup_chrome_stealth():
-    """Configuração stealth para evitar detecção"""
+    """Configuração ULTRA stealth para evitar detecção"""
     options = Options()
     
     # Configurações básicas
-    options.add_argument("--headless")
+    options.add_argument("--headless=new")  # Nova sintaxe headless
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
     
-    # Configurações stealth
+    # Configurações stealth AVANÇADAS
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
     options.add_experimental_option('useAutomationExtension', False)
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-plugins")
+    options.add_argument("--disable-images")  # Acelera carregamento
+    options.add_argument("--disable-javascript")  # Pode ajudar com alguns bloqueios
     
     # User agents realistas (rotaciona)
     user_agents = [
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     ]
-    options.add_argument(f"--user-agent={random.choice(user_agents)}")
+    options.add_argument(f"user-agent={random.choice(user_agents)}")
     
     # Para Chromium
     options.binary_location = "/usr/bin/chromium-browser"
@@ -216,35 +221,57 @@ def buscar_vagas_catho():
         driver = webdriver.Chrome(options=options)
         remover_rastros_automacao(driver)
         
-        url = f"https://www.catho.com.br/vagas/{LOCAL.replace(' ', '-').lower()}/?q=desenvolvedor"
+        # URL CORRIGIDA - removi a vírgula do local
+        local_catho = LOCAL.replace(',', '').replace(' ', '-').lower()
+        url = f"https://www.catho.com.br/vagas/{local_catho}/?q=desenvolvedor"
         log_info(f"🔗 {url}")
         
         driver.get(url)
-        time.sleep(random.uniform(4, 7))
+        time.sleep(random.uniform(6, 9))  # Mais tempo para Catho
         
-        # Seletores Catho
-        seletores = [
-            "a[data-testid*='job']",
-            ".job-card a",
-            "[data-id*='job']",
-            "a[href*='/vaga/']"
+        # VERIFICA SE CARREGOU
+        page_title = driver.title.lower()
+        if "catho" not in page_title:
+            log_error("🚫 Catho não carregou corretamente")
+            return []
+        
+        # SELETORES ATUALIZADOS PARA CATHD
+        seletores_catho = [
+            "a[data-testid*='job']",           # Prioridade 1
+            "[data-id*='job']",                # Prioridade 2
+            "a[href*='/vaga/']",               # Prioridade 3
+            ".job-card a",                     # Prioridade 4
+            ".vacancy-card a",                 # Prioridade 5
+            "a[class*='job']",                 # Prioridade 6
+            "a[href*='/vagas/']"               # Prioridade 7
         ]
         
         vagas = []
-        for seletor in seletores:
+        for seletor in seletores_catho:
             try:
                 elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
                 if elementos:
                     vagas = elementos
-                    log_info(f"🔍 {len(vagas)} vagas encontradas")
+                    log_info(f"🔍 {len(vagas)} vagas com: {seletor}")
                     break
             except:
                 continue
         
+        # BUSCA ALTERNATIVA
+        if not vagas:
+            log_info("🔄 Tentando busca alternativa na Catho...")
+            todos_links = driver.find_elements(By.CSS_SELECTOR, "a")
+            for link in todos_links:
+                href = link.get_attribute("href") or ""
+                texto = link.text.strip()
+                if "/vaga/" in href and len(texto) > 10:
+                    vagas.append(link)
+            log_info(f"🔍 {len(vagas)} vagas por busca alternativa")
+        
         resultados = []
         vagas_processadas = 0
         
-        for job in vagas[:8]:
+        for job in vagas[:10]:
             try:
                 titulo = job.text.strip()
                 link = job.get_attribute("href")
@@ -254,17 +281,21 @@ def buscar_vagas_catho():
                 
                 vagas_processadas += 1
                 
+                # LOG PARA DEBUG
+                log_info(f"📌 Vaga Catho: {titulo[:60]}...")
+                
                 # Usa o filtro inteligente
                 if filtrar_vaga_ti(titulo):
                     resultados.append(f"**{titulo}**\n{link}")
                     log_success(f"✅ Catho: {titulo}")
                 else:
-                    log_info(f"❌ Filtrada: {titulo}")
+                    log_info(f"❌ Filtrada: {titulo[:40]}...")
                     
-            except:
+            except Exception as e:
+                log_error(f"Erro processando vaga Catho: {e}")
                 continue
         
-        log_info(f"📊 Processadas: {vagas_processadas} | Filtradas: {len(resultados)}")
+        log_info(f"📊 Catho - Processadas: {vagas_processadas} | Filtradas: {len(resultados)}")
         return resultados
         
     except Exception as e:
@@ -286,50 +317,55 @@ def buscar_vagas_indeed():
         driver = webdriver.Chrome(options=options)
         remover_rastros_automacao(driver)
         
-        # URL alternativa mais simples
-        url = f"https://br.indeed.com/jobs?q=ti&l={LOCAL.replace(' ', '+')}"
+        # URL MAIS SIMPLES - evita termos complexos
+        url = f"https://br.indeed.com/jobs?q=programador&l={LOCAL.replace(' ', '+')}"
         log_info(f"🔗 {url}")
         
         driver.get(url)
-        time.sleep(random.uniform(3, 6))  # Espera aleatória
+        time.sleep(random.uniform(5, 8))  # Mais tempo
         
-        # Tenta diferentes abordagens
-        vagas = []
+        # VERIFICA SE CARREGOU CORRETAMENTE
+        page_title = driver.title.lower()
+        if "indeed" not in page_title:
+            log_error("🚫 Indeed não carregou corretamente")
+            return []
         
-        # Método 1: Seletores comuns
-        seletores = [
-            "a.jcs-JobTitle",
-            "[data-jk]",
-            ".jobTitle",
-            "a[class*='jobTitle']",
-            ".jcs-JobTitle"
+        # MÚLTIPLOS SELETORES EM ORDEM DE PRIORIDADE
+        seletores_indeed = [
+            "a[class*='jcs-JobTitle']",  # Prioridade 1
+            "[data-jk]",                 # Prioridade 2  
+            "a.jobTitle",                # Prioridade 3
+            ".job_seen_beacon a",        # Prioridade 4
+            "a[href*='/viewjob']",       # Prioridade 5
+            "a[href*='/company']"        # Prioridade 6
         ]
         
-        for seletor in seletores:
+        vagas = []
+        for seletor in seletores_indeed:
             try:
                 elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
-                if elementos:
+                if elementos and len(elementos) > 2:  # Só aceita se encontrar várias
                     vagas = elementos
-                    log_info(f"🔍 {len(vagas)} vagas encontradas")
+                    log_info(f"🔍 {len(vagas)} vagas com: {seletor}")
                     break
-            except:
+            except Exception as e:
                 continue
         
-        # Método 2: Busca por texto
+        # SE NÃO ENCONTROU, TENTA BUSCAR QUALQUER LINK QUE PARECA VAGA
         if not vagas:
-            try:
-                page_source = driver.page_source.lower()
-                if "vagas" in page_source or "emprego" in page_source:
-                    log_info("📄 Página carregou, mas não encontrou elementos")
-                else:
-                    log_info("🚫 Página pode estar bloqueada")
-            except:
-                pass
+            log_info("🔄 Tentando busca alternativa...")
+            todos_links = driver.find_elements(By.CSS_SELECTOR, "a")
+            for link in todos_links:
+                href = link.get_attribute("href") or ""
+                texto = link.text.strip()
+                if ("/viewjob" in href or "/company" in href) and len(texto) > 10:
+                    vagas.append(link)
+            log_info(f"🔍 {len(vagas)} vagas por busca alternativa")
         
         resultados = []
         vagas_processadas = 0
         
-        for job in vagas[:8]:
+        for job in vagas[:10]:
             try:
                 titulo = job.text.strip()
                 link = job.get_attribute("href")
@@ -339,17 +375,21 @@ def buscar_vagas_indeed():
                 
                 vagas_processadas += 1
                 
+                # LOG PARA DEBUG
+                log_info(f"📌 Vaga Indeed: {titulo[:60]}...")
+                
                 # Usa o filtro inteligente
                 if filtrar_vaga_ti(titulo):
                     resultados.append(f"**{titulo}**\n{link}")
                     log_success(f"✅ Indeed: {titulo}")
                 else:
-                    log_info(f"❌ Filtrada: {titulo}")
+                    log_info(f"❌ Filtrada: {titulo[:40]}...")
                     
             except Exception as e:
+                log_error(f"Erro processando vaga Indeed: {e}")
                 continue
         
-        log_info(f"📊 Processadas: {vagas_processadas} | Filtradas: {len(resultados)}")
+        log_info(f"📊 Indeed - Processadas: {vagas_processadas} | Filtradas: {len(resultados)}")
         return resultados
         
     except Exception as e:
@@ -415,3 +455,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
