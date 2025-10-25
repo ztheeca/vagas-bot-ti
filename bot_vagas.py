@@ -36,39 +36,40 @@ def log_success(message): logging.info(f"✅ {message}")
 # ===========================
 # 🛠️ CONFIGURAÇÃO CHROME
 # ===========================
+
 def setup_chrome():
-    """Configuração ultra simples do Chrome"""
+    """Configuração para Chromium"""
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
+    
+    # Especifica usar Chromium
+    options.binary_location = "/usr/bin/chromium-browser"
+    
     return options
 
-# ===========================
-# 🔍 BUSCA INDEED
-# ===========================
 def buscar_vagas_indeed():
     log_info("🌐 Buscando no Indeed...")
     driver = None
     
     try:
         options = setup_chrome()
-        driver = webdriver.Chrome(options=options)  # ChromeDriver já no PATH
+        driver = webdriver.Chrome(options=options)
         
         url = f"https://br.indeed.com/jobs?q=desenvolvedor+OR+programador+OR+TI&l={LOCAL.replace(' ', '+')}"
         log_info(f"🔗 {url}")
         
         driver.get(url)
-        time.sleep(5)  # Espera simples
+        time.sleep(5)
         
-        # Busca elementos básicos
         vagas = driver.find_elements(By.CSS_SELECTOR, "a.jcs-JobTitle")
         log_info(f"🔍 {len(vagas)} vagas encontradas")
         
         resultados = []
-        for job in vagas[:5]:  # Apenas 5 vagas
+        for job in vagas[:5]:
             try:
                 titulo = job.text.strip()
                 link = job.get_attribute("href")
@@ -86,6 +87,7 @@ def buscar_vagas_indeed():
     finally:
         if driver:
             driver.quit()
+
 
 # ===========================
 # 🔍 BUSCA GLASSDOOR
@@ -183,3 +185,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
