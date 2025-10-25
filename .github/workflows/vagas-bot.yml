@@ -18,51 +18,40 @@ jobs:
       with:
         python-version: '3.10'
         
-    - name: Instalar Chrome e ChromeDriver compatíveis
+    - name: Instalar Chrome estável
       run: |
         sudo apt-get update
-        # Remove versões conflitantes
-        sudo apt-get remove -y chromium-browser
-        sudo rm -f /usr/bin/chromedriver
+        sudo apt-get install -y wget
+        wget -q https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+        sudo apt-get install -y ./google-chrome-stable_current_amd64.deb
+        rm google-chrome-stable_current_amd64.deb
         
-        # Instala Chrome estável
-        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
+    - name: Instalar ChromeDriver compatível
+      run: |
+        # Baixa ChromeDriver compatível com a versão do Chrome
+        CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
+        echo "Chrome version: $CHROME_VERSION"
         
-        # Instala ChromeDriver compatível
-        CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+\.\d+')
-        CHROMEDRIVER_VERSION=$(echo $CHROME_VERSION | grep -oP '^\d+\.\d+\.\d+')
-        wget -q "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROMEDRIVER_VERSION"
-        CHROMEDRIVER_LATEST=$(cat "LATEST_RELEASE_$CHROMEDRIVER_VERSION")
-        wget -q "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_LATEST/chromedriver_linux64.zip"
-        unzip -q chromedriver_linux64.zip
-        sudo mv chromedriver /usr/local/bin/
+        # Baixa ChromeDriver correspondente
+        wget -q "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/$(echo $CHROME_VERSION | cut -d. -f1)/linux64/chromedriver-linux64.zip"
+        unzip -q chromedriver-linux64.zip
+        sudo mv chromedriver-linux64/chromedriver /usr/local/bin/
         sudo chmod +x /usr/local/bin/chromedriver
         
     - name: Verificar instalações
       run: |
-        echo "Chrome version:"
+        echo "✅ Chrome:"
         google-chrome --version
-        echo "ChromeDriver version:"
+        echo "✅ ChromeDriver:"
         chromedriver --version
-        echo "ChromeDriver path:"
-        which chromedriver
         
     - name: Instalar dependências Python
       run: |
         pip install -r requirements.txt
         
-    - name: Executar Bot de Vagas
+    - name: Executar Bot
       env:
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         LOCAL: "Salvador, BA"
-        MAX_VAGAS_POR_PLATAFORMA: "6"
-        TENTATIVAS_BUSCA: "2"
-        TIMEOUT_PAGINA: "25"
-        GRUPO_MENSAGEM_DISCORD: "3"
       run: |
-        echo "🚀 Iniciando bot de vagas..."
         python bot_vagas.py
-        echo "✅ Execução concluída!"
