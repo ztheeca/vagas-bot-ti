@@ -28,14 +28,8 @@ jobs:
         sudo apt-get install -y chromium-browser
         sudo apt-get install -y libxss1 fonts-liberation xdg-utils
         
-    - name: ✅ Verificar instalações
-      run: |
-        echo "✅ Chromium:"
-        chromium-browser --version
-        echo "✅ ChromeDriver:"
-        chromedriver --version
-        echo "✅ Python:"
-        python --version
+    - name: ✅ Verificar Chromium
+      run: chromium-browser --version
         
     - name: 📦 Instalar dependências Python
       run: |
@@ -47,20 +41,15 @@ jobs:
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         LOCAL: "Salvador, BA"
         PYTHONUNBUFFERED: 1
-      run: |
-        echo "🚀 Iniciando busca automática de vagas..."
-        echo "Timestamp: $(date)"
-        python bot_vagas.py
+      run: python bot_vagas.py
         
     - name: ✅ Sucesso
       if: success()
-      run: |
-        echo "✅ Bot executado com sucesso!"
-        echo "Próxima execução no próximo horário agendado"
+      run: echo "✅ Bot executado com sucesso!"
         
-    - name: ❌ Notificar Erro
+    - name: ❌ Erro no Discord
       if: failure()
       run: |
         curl -X POST ${{ secrets.DISCORD_WEBHOOK_URL }} \
           -H 'Content-Type: application/json' \
-          -d '{"content":"❌ Erro ao executar bot de vagas. Verifique os logs no GitHub Actions."}' || true
+          -d '{"content":"❌ Erro ao executar bot. Verifique os logs."}' || true
