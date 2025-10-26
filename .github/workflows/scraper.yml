@@ -1,0 +1,83 @@
+name: Bot Vagas TI
+
+on:
+  schedule:
+    # ⏰ HORÁRIOS AGENDADOS (UTC)
+    # 11h UTC = 8h Brasília | 14h UTC = 11h Brasília | 17h UTC = 14h Brasília | 20h UTC = 17h Brasília | 23h UTC = 20h Brasília
+    - cron: '0 11,14,17,20,23 * * *'
+  workflow_dispatch:  # Permite executar manualmente
+
+jobs:
+  buscar-vagas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: 📥 Checkout do código
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Configurar Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+        
+    - name: 🌐 Instalar Chromium e ChromeDriver
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y chromium-browser chromium-chromedriver
+        # Instalar dependências de library para Chromium rodar corretamente
+        sudo apt-get install -y libxss1 libappindicator1 libindicator7
+        
+    - name: ✅ Verificar instalações
+      run: |
+        echo "✅ Chromium:"
+        chromium-browser --version
+        echo "✅ ChromeDriver:"
+        chromedriver --version
+        echo "✅ Python:"
+        python --version
+        
+    - name: 📦 Instalar dependências Python
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: 🎭 Verificar arquivo .env (não usar secrets aqui)
+      run: |
+        # O script vai usar variáveis de ambiente, não .env
+        echo "Variáveis configuradas via GitHub Secrets"
+        
+    - name: 🚀 Executar Bot de Vagas com Retry
+      env:
+        DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        LOCAL: "Salvador, BA"
+        PYTHONUNBUFFERED: 1
+      run: |
+        echo "🚀 Iniciando busca automática de vagas..."
+        python bot_vagas.py || true
+        echo "✅ Busca concluída!"
+        
+    - name: 📊 Logs da Execução
+      if: always()
+      run: |
+        echo "Job finalizado em: $(date)"
+        echo "Status: ${{ job.status }}"
+        
+    - name: ❌ Notificar Erro no Discord
+      if: failure()
+      run: |
+        curl -X POST ${{ secrets.DISCORD_WEBHOOK_URL }} \
+          -H 'Content-Type: application/json' \
+          -d '{
+            "content": "❌ **Erro na busca de vagas!**",
+            "embeds": [{
+              "title": "Bot de Vagas TI",
+              "description": "Falha ao executar busca automática",
+              "color": 16711680,
+              "fields": [
+                {"name": "Status", "value": "Erro", "inline": true},
+                {"name": "Timestamp", "value": "'$(date)'", "inline": true}
+              ]
+            }]
+          }' || true
