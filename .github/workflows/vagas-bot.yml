@@ -22,62 +22,97 @@ jobs:
         python-version: '3.11'
         cache: 'pip'
         
-    - name: 🌐 Instalar Chromium e ChromeDriver
+    - name: 📂 Listar arquivos da raiz
+      run: |
+        echo "=== ARQUIVOS NA RAIZ ==="
+        ls -la
+        echo ""
+        echo "=== VERIFICAR bot_vagas.py ==="
+        if [ -f "bot_vagas.py" ]; then
+          echo "✅ bot_vagas.py ENCONTRADO"
+          wc -l bot_vagas.py
+        else
+          echo "❌ bot_vagas.py NÃO ENCONTRADO"
+          find . -name "*vagas*" -type f
+        fi
+        
+    - name: 📄 Verificar requirements.txt
+      run: |
+        echo "=== CONTEÚDO DE requirements.txt ==="
+        if [ -f "requirements.txt" ]; then
+          cat requirements.txt
+        else
+          echo "❌ requirements.txt NÃO ENCONTRADO"
+        fi
+        
+    - name: 🌐 Instalar Chromium
       run: |
         sudo apt-get update
         sudo apt-get install -y chromium-browser chromium-chromedriver
-        # Instalar dependências de library para Chromium rodar corretamente
-        sudo apt-get install -y libxss1 libappindicator1 libindicator7
+        sudo apt-get install -y libxss1 fonts-liberation xdg-utils
         
     - name: ✅ Verificar instalações
       run: |
-        echo "✅ Chromium:"
+        echo "=== VERIFICANDO INSTALAÇÕES ==="
+        echo "Chromium:"
         chromium-browser --version
-        echo "✅ ChromeDriver:"
+        echo "ChromeDriver:"
         chromedriver --version
-        echo "✅ Python:"
+        echo "Python:"
         python --version
         
     - name: 📦 Instalar dependências Python
       run: |
+        echo "=== INSTALANDO DEPENDÊNCIAS ==="
         python -m pip install --upgrade pip
         pip install -r requirements.txt
+        echo ""
+        echo "=== PACOTES INSTALADOS ==="
+        pip list | grep -E "selenium|requests|dotenv|webdriver"
         
-    - name: 🎭 Verificar arquivo .env (não usar secrets aqui)
+    - name: 🔍 Verificar sintaxe do script
       run: |
-        # O script vai usar variáveis de ambiente, não .env
-        echo "Variáveis configuradas via GitHub Secrets"
+        echo "=== VERIFICANDO SINTAXE ==="
+        python -m py_compile bot_vagas.py
+        if [ $? -eq 0 ]; then
+          echo "✅ Sintaxe OK"
+        else
+          echo "❌ ERRO DE SINTAXE"
+          exit 1
+        fi
         
-    - name: 🚀 Executar Bot de Vagas com Retry
+    - name: 🚀 Executar Bot de Vagas
       env:
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         LOCAL: "Salvador, BA"
         PYTHONUNBUFFERED: 1
       run: |
-        echo "🚀 Iniciando busca automática de vagas..."
-        python bot_vagas.py || true
-        echo "✅ Busca concluída!"
+        echo "=== INICIANDO SCRIPT ==="
+        echo "Timestamp: $(date)"
+        echo "LOCAL: $LOCAL"
+        echo "DISCORD_WEBHOOK_URL configurado: $([ -n "$DISCORD_WEBHOOK_URL" ] && echo 'SIM' || echo 'NÃO')"
+        echo ""
+        echo "=== EXECUTANDO ==="
+        python bot_vagas.py
+        echo ""
+        echo "=== SCRIPT FINALIZADO ==="
+        echo "Exit code: $?"
         
-    - name: 📊 Logs da Execução
-      if: always()
+    - name: ✅ Sucesso
+      if: success()
       run: |
-        echo "Job finalizado em: $(date)"
-        echo "Status: ${{ job.status }}"
+        echo "✅ Bot executado com sucesso!"
+        echo "Timestamp: $(date)"
         
-    - name: ❌ Notificar Erro no Discord
+    - name: ❌ Erro - Debug
       if: failure()
       run: |
-        curl -X POST ${{ secrets.DISCORD_WEBHOOK_URL }} \
-          -H 'Content-Type: application/json' \
-          -d '{
-            "content": "❌ **Erro na busca de vagas!**",
-            "embeds": [{
-              "title": "Bot de Vagas TI",
-              "description": "Falha ao executar busca automática",
-              "color": 16711680,
-              "fields": [
-                {"name": "Status", "value": "Erro", "inline": true},
-                {"name": "Timestamp", "value": "'$(date)'", "inline": true}
-              ]
-            }]
-          }' || true
+        echo "❌ FALHA NA EXECUÇÃO"
+        echo ""
+        echo "CHECKLIST:"
+        echo "1. bot_vagas.py existe na raiz? $([ -f 'bot_vagas.py' ] && echo 'SIM ✅' || echo 'NÃO ❌')"
+        echo "2. requirements.txt existe? $([ -f 'requirements.txt' ] && echo 'SIM ✅' || echo 'NÃO ❌')"
+        echo "3. DISCORD_WEBHOOK_URL configurado? $([ -n '${{ secrets.DISCORD_WEBHOOK_URL }}' ] && echo 'SIM ✅' || echo 'NÃO ❌')"
+        echo "4. Chrome instalado? $(which chromium-browser > /dev/null && echo 'SIM ✅' || echo 'NÃO ❌')"
+        echo ""
+        echo "Verifique os logs acima para mais detalhes!"
