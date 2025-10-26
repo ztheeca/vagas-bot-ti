@@ -67,7 +67,7 @@ def filtrar_vaga_ti(titulo):
     ]
     
     termos_inclusao_ti = [
-        'auxiliar', 'assistente', 'estágio', 'estagiário', 'estagiária', 'junior', 'júnior', 'jr', 'jr.'
+        'auxiliar', 'assistente', 'estágio', 'estagiário', 'estagiária', 'junior', 'júnior', 'jr', 'jr.', 'iniciante', 'aprendiz', 'trainee'
     ]
     
     termos_exclusao_ti = [
@@ -96,7 +96,7 @@ def filtrar_vaga_ti(titulo):
     tem_inclusao = any(termo in titulo_lower for termo in termos_inclusao_ti)
     nao_tem_exclusao = not any(termo in titulo_lower for termo in termos_exclusao_ti)
     
-    return tem_termo_ti and nao_tem_nao_ti and tem_inclusao and nao_tem_exclusao
+    return tem_termo_ti and nao_tem_nao_ti and (tem_inclusao or nao_tem_exclusao)  # Permite TI sem "junior" se não tiver "pleno"
 
 # ===========================
 # 🔍 BUSCA INFOJOBS
@@ -406,3 +406,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
