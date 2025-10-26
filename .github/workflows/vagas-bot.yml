@@ -28,6 +28,13 @@ jobs:
         sudo apt-get install -y chromium-browser
         sudo apt-get install -y libxss1 fonts-liberation xdg-utils
         
+    - name: Install Google Chrome  # <-- NOVO: Instala o Chrome
+      run: |
+        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
     - name: ✅ Verificar Chromium
       run: chromium-browser --version
         
@@ -53,3 +60,4 @@ jobs:
         curl -X POST ${{ secrets.DISCORD_WEBHOOK_URL }} \
           -H 'Content-Type: application/json' \
           -d '{"content":"❌ Erro ao executar bot. Verifique os logs."}' || true
+
