@@ -28,11 +28,11 @@ jobs:
         ls -la
         echo ""
         echo "=== VERIFICAR bot_vagas.py ==="
-        if [ -f "bot_vagas.py" ]; then
-          echo "✅ bot_vagas.py ENCONTRADO"
-          wc -l bot_vagas.py
+        if [ -f "scripts/bot_vagas.py" ]; then
+          echo "✅ scripts/bot_vagas.py ENCONTRADO"
+          wc -l scripts/bot_vagas.py
         else
-          echo "❌ bot_vagas.py NÃO ENCONTRADO"
+          echo "❌ scripts/bot_vagas.py NÃO ENCONTRADO"
           find . -name "*vagas*" -type f
         fi
         
@@ -73,7 +73,7 @@ jobs:
     - name: 🔍 Verificar sintaxe do script
       run: |
         echo "=== VERIFICANDO SINTAXE ==="
-        python -m py_compile bot_vagas.py
+        python -m py_compile scripts/bot_vagas.py
         if [ $? -eq 0 ]; then
           echo "✅ Sintaxe OK"
         else
@@ -93,7 +93,7 @@ jobs:
         echo "DISCORD_WEBHOOK_URL configurado: $([ -n "$DISCORD_WEBHOOK_URL" ] && echo 'SIM' || echo 'NÃO')"
         echo ""
         echo "=== EXECUTANDO ==="
-        python bot_vagas.py
+        python scripts/bot_vagas.py
         echo ""
         echo "=== SCRIPT FINALIZADO ==="
         echo "Exit code: $?"
@@ -110,9 +110,10 @@ jobs:
         echo "❌ FALHA NA EXECUÇÃO"
         echo ""
         echo "CHECKLIST:"
-        echo "1. bot_vagas.py existe na raiz? $([ -f 'bot_vagas.py' ] && echo 'SIM ✅' || echo 'NÃO ❌')"
+        echo "1. bot_vagas.py existe? $([ -f 'scripts/bot_vagas.py' ] && echo 'SIM ✅' || echo 'NÃO ❌')"
         echo "2. requirements.txt existe? $([ -f 'requirements.txt' ] && echo 'SIM ✅' || echo 'NÃO ❌')"
         echo "3. DISCORD_WEBHOOK_URL configurado? $([ -n '${{ secrets.DISCORD_WEBHOOK_URL }}' ] && echo 'SIM ✅' || echo 'NÃO ❌')"
         echo "4. Chrome instalado? $(which chromium-browser > /dev/null && echo 'SIM ✅' || echo 'NÃO ❌')"
         echo ""
         echo "Verifique os logs acima para mais detalhes!"
+
