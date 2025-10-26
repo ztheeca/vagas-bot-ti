@@ -121,25 +121,21 @@ def buscar_vagas_infojobs():
         driver.get(url)
         time.sleep(random.uniform(5, 8))
         
-        # Atualizado: Seletores expandidos
-        seletores = [
-            "a.js_vacancyTitle",
-            ".vacancy-title a",
-            "[data-vacancy-title]",
-            "a[href*='/vagas']",
-            ".job-title a",
-            "h3 a",
-            ".card-job a"
+        # Atualizado: XPaths flexíveis (adaptam-se a mudanças no site)
+        xpaths = [
+            "//a[contains(@href, '/vagas') and contains(text(), 'Desenvolvedor')]",  # Links com '/vagas' e texto contendo 'Desenvolvedor'
+            "//div[contains(@class, 'job') or contains(@class, 'vacancy')]//a",  # Qualquer link dentro de div com 'job' ou 'vacancy'
+            "//h3//a | //h2//a"  # Links dentro de h3 ou h2 (títulos comuns)
         ]
         
         vagas = []
-        for seletor in seletores:
+        for xpath in xpaths:
             try:
                 WebDriverWait(driver, 10).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, seletor))
+                    EC.presence_of_all_elements_located((By.XPATH, xpath))
                 )
-                elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
-                log_info(f"Elementos com '{seletor}': {len(elementos)}")  # Novo: Debug
+                elementos = driver.find_elements(By.XPATH, xpath)
+                log_info(f"Elementos com '{xpath}': {len(elementos)}")  # Debug
                 if elementos:
                     vagas = elementos
                     log_info(f"🔍 {len(vagas)} vagas encontradas")
@@ -156,7 +152,7 @@ def buscar_vagas_infojobs():
                 if not titulo or len(titulo) < 5 or not link:
                     continue
                 
-                # Novo: Filtro extra para títulos inválidos
+                # Filtro extra para títulos inválidos
                 if len(titulo) < 10 or not any(word in titulo.lower() for word in ['vaga', 'emprego', 'job', 'desenvolvedor']):
                     log_info(f"Pulado (título inválido): {titulo[:50]}...")
                     continue
@@ -209,29 +205,21 @@ def buscar_vagas_catho():
         driver.get(url)
         time.sleep(random.uniform(7, 10))
         
-        # Atualizado: Seletores expandidos
-        seletores_catho = [
-            "a[data-testid*='job']",
-            "[data-id*='job']",
-            "a[href*='/vaga/']",
-            ".job-card a",
-            "a[class*='job']",
-            "h3 a",
-            ".sc-1h4w872-0 a",
-            ".job-item a",
-            ".search-result-item a",
-            ".job-link",
-            ".vacancy-link a"
+        # Atualizado: XPaths flexíveis
+        xpaths_catho = [
+            "//a[contains(@href, '/vaga/') and contains(text(), 'Desenvolvedor')]",  # Links com '/vaga/' e texto contendo 'Desenvolvedor'
+            "//div[contains(@class, 'job') or contains(@class, 'vacancy')]//a",  # Qualquer link dentro de div com 'job' ou 'vacancy'
+            "//h3//a | //h2//a"  # Links dentro de h3 ou h2
         ]
         
         vagas = []
-        for seletor in seletores_catho:
+        for xpath in xpaths_catho:
             try:
                 WebDriverWait(driver, 10).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, seletor))
+                    EC.presence_of_all_elements_located((By.XPATH, xpath))
                 )
-                elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
-                log_info(f"Elementos com '{seletor}': {len(elementos)}")  # Novo: Debug
+                elementos = driver.find_elements(By.XPATH, xpath)
+                log_info(f"Elementos com '{xpath}': {len(elementos)}")  # Debug
                 if elementos:
                     vagas = elementos
                     log_info(f"🔍 {len(vagas)} vagas")
@@ -248,7 +236,7 @@ def buscar_vagas_catho():
                 if not titulo or len(titulo) < 5 or not link:
                     continue
                 
-                # Novo: Filtro extra para títulos inválidos
+                # Filtro extra para títulos inválidos
                 if len(titulo) < 10 or not any(word in titulo.lower() for word in ['vaga', 'emprego', 'job', 'desenvolvedor']):
                     log_info(f"Pulado (título inválido): {titulo[:50]}...")
                     continue
@@ -300,29 +288,21 @@ def buscar_vagas_indeed():
         driver.get(url)
         time.sleep(random.uniform(6, 9))
         
-        # Atualizado: Seletores expandidos
-        seletores_indeed = [
-            "a[class*='jcs-JobTitle']",
-            "[data-jk]",
-            "a.jobTitle",
-            ".job_seen_beacon a",
-            "a[href*='/viewjob']",
-            "h2 a",
-            ".jobtitle a",
-            ".resultContent a",
-            ".jobsearch-ResultsList a",
-            ".jobtitle-link",
-            ".tapItem a"
+        # Atualizado: XPaths flexíveis
+        xpaths_indeed = [
+            "//a[contains(@href, '/viewjob') and contains(text(), 'Programador')]",  # Links com '/viewjob' e texto contendo 'Programador'
+            "//div[contains(@class, 'job') or contains(@class, 'result')]//a",  # Qualquer link dentro de div com 'job' ou 'result'
+            "//h2//a | //h3//a"  # Links dentro de h2 ou h3
         ]
         
         vagas = []
-        for seletor in seletores_indeed:
+        for xpath in xpaths_indeed:
             try:
                 WebDriverWait(driver, 10).until(
-                    EC.presence_of_all_elements_located((By.CSS_SELECTOR, seletor))
+                    EC.presence_of_all_elements_located((By.XPATH, xpath))
                 )
-                elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
-                log_info(f"Elementos com '{seletor}': {len(elementos)}")  # Novo: Debug
+                elementos = driver.find_elements(By.XPATH, xpath)
+                log_info(f"Elementos com '{xpath}': {len(elementos)}")  # Debug
                 if elementos and len(elementos) > 2:
                     vagas = elementos
                     log_info(f"🔍 {len(vagas)} vagas")
@@ -339,5 +319,90 @@ def buscar_vagas_indeed():
                 if not titulo or len(titulo) < 5 or not link:
                     continue
                 
-                # Novo: Filtro extra para títulos inválidos
-                if len(titulo) < 10 or not any(word in titulo.lower() for word in ['
+                # Filtro extra para títulos inválidos
+                if len(titulo) < 10 or not any(word in titulo.lower() for word in ['vaga', 'emprego', 'job', 'desenvolvedor']):
+                    log_info(f"Pulado (título inválido): {titulo[:50]}...")
+                    continue
+                
+                log_info(f"Analisando vaga: {titulo[:50]}...")
+                
+                if filtrar_vaga_ti(titulo):
+                    resultados.append(f"**{titulo}**\n{link}")
+                    log_success(f"Indeed: {titulo[:50]}...")
+                else:
+                    log_info(f"Rejeitado: {titulo[:50]}...")
+                
+                time.sleep(random.uniform(0.3, 0.8))
+                    
+            except Exception as e:
+                continue
+        
+        log_info(f"📊 Indeed: {len(resultados)} vagas filtradas")
+        return resultados
+        
+    except Exception as e:
+        log_error(f"Erro Indeed: {str(e)[:100]}...")
+        return []
+    finally:
+        if driver:
+            driver.quit()
+            time.sleep(random.uniform(2, 3))
+
+# ===========================
+# 🚀 ENVIAR DISCORD
+# ===========================
+def enviar_discord(vagas):
+    if not vagas:
+        log_info("📭 Nenhuma vaga para enviar")
+        try:
+            if DISCORD_WEBHOOK_URL:
+                requests.post(DISCORD_WEBHOOK_URL, 
+                            json={"content": f"🔍 Nenhuma vaga de TI encontrada em {LOCAL}."}, 
+                            timeout=10)
+        except:
+            pass
+        return
+        
+    mensagem = f"🎯 **Vagas de TI em {LOCAL}**\n\n" + "\n\n".join(vagas[:8])
+    
+    try:
+        requests.post(DISCORD_WEBHOOK_URL, json={"content": mensagem}, timeout=10)
+        log_success("📤 Mensagem enviada para Discord!")
+    except Exception as e:
+        log_error(f"Erro Discord: {e}")
+
+# ===========================
+# 🧠 FUNÇÃO PRINCIPAL
+# ===========================
+def main():
+    setup_logging()
+    log_info("🚀 Iniciando busca de vagas...")
+    
+    if not DISCORD_WEBHOOK_URL:
+        log_error("❌ Discord webhook não configurado")
+        return
+    
+    log_info("🔄 Testando diferentes plataformas...")
+    
+    vagas_indeed = buscar_vagas_indeed()
+    time.sleep(random.uniform(5, 10))
+    
+    vagas_catho = buscar_vagas_catho()
+    time.sleep(random.uniform(5, 10))
+    
+    vagas_infojobs = buscar_vagas_infojobs()
+    
+    todas_vagas = vagas_indeed + vagas_catho + vagas_infojobs
+    
+    if todas_vagas:
+        log_success(f"🎯 Total: {len(todas_vagas)} vagas encontradas")
+        log_info(f"📊 Indeed: {len(vagas_indeed)} | Catho: {len(vagas_catho)} | InfoJobs: {len(vagas_infojobs)}")
+        enviar_discord(todas_vagas)
+    else:
+        log_info("📭 Nenhuma vaga encontrada")
+        enviar_discord([])
+    
+    log_success("🏁 Busca concluída!")
+
+if __name__ == "__main__":
+    main()
