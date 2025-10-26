@@ -10,7 +10,7 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.chrome.options import Options as ChromeOptions  # Novo: Para opções do Chrome
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -96,7 +96,15 @@ def buscar_vagas_infojobs():
     driver = None
     
     try:
-        driver = uc.Chrome(headless=True, use_subprocess=False)
+        # Novo: Opções para Chrome em CI
+        options = ChromeOptions()
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--headless')
+        options.add_argument('--window-size=1920,1080')
+        options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+        driver = uc.Chrome(options=options, use_subprocess=False)
         
         url = f"https://www.infojobs.com.br/vagas-de-emprego-{LOCAL.replace(',', '').replace(' ', '-').lower()}.aspx?palabra=desenvolvedor"
         log_info(f"🔗 {url}")
@@ -134,9 +142,15 @@ def buscar_vagas_infojobs():
                 if not titulo or len(titulo) < 5 or not link:
                     continue
                 
-                if filtrar_vaga_ti(titulo):
-                    resultados.append(f"**{titulo}**\n{link}")
-                    log_success(f"InfoJobs: {titulo[:50]}...")
+                # Novo: Filtro extra por localização (prioriza Salvador/BA)
+                if "salvador" in titulo.lower() or "ba" in titulo.lower():
+                    if filtrar_vaga_ti(titulo):
+                        resultados.append(f"**{titulo}**\n{link}")
+                        log_success(f"InfoJobs: {titulo[:50]}...")
+                    else:
+                        log_info(f"Rejeitado (não TI): {titulo[:50]}...")  # Novo: Log para debug
+                else:
+                    log_info(f"Ignorado (localização): {titulo[:50]}...")  # Novo: Log para debug
                 
                 time.sleep(random.uniform(0.3, 0.8))
                     
@@ -162,7 +176,15 @@ def buscar_vagas_catho():
     driver = None
     
     try:
-        driver = uc.Chrome(headless=True, use_subprocess=False)
+        # Novo: Opções para Chrome em CI
+        options = ChromeOptions()
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--headless')
+        options.add_argument('--window-size=1920,1080')
+        options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+        driver = uc.Chrome(options=options, use_subprocess=False)
         
         local_catho = LOCAL.replace(',', '').replace(' ', '-').lower()
         url = f"https://www.catho.com.br/vagas/{local_catho}/?q=desenvolvedor"
@@ -171,12 +193,15 @@ def buscar_vagas_catho():
         driver.get(url)
         time.sleep(random.uniform(7, 10))
         
+        # Novo: Seletores expandidos para capturar mais vagas
         seletores_catho = [
             "a[data-testid*='job']",
             "[data-id*='job']",
             "a[href*='/vaga/']",
             ".job-card a",
-            "a[class*='job']"
+            "a[class*='job']",
+            "h3 a",  # Novo: Títulos de vagas
+            ".sc-1h4w872-0 a"  # Novo: Padrão comum no Catho
         ]
         
         vagas = []
@@ -205,6 +230,8 @@ def buscar_vagas_catho():
                 if filtrar_vaga_ti(titulo):
                     resultados.append(f"**{titulo}**\n{link}")
                     log_success(f"Catho: {titulo[:50]}...")
+                else:
+                    log_info(f"Rejeitado (não TI): {titulo[:50]}...")  # Novo: Log para debug
                 
                 time.sleep(random.uniform(0.3, 0.8))
                     
@@ -230,7 +257,15 @@ def buscar_vagas_indeed():
     driver = None
     
     try:
-        driver = uc.Chrome(headless=True, use_subprocess=False)
+        # Novo: Opções para Chrome em CI
+        options = ChromeOptions()
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--headless')
+        options.add_argument('--window-size=1920,1080')
+        options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36')
+        driver = uc.Chrome(options=options, use_subprocess=False)
         
         url = f"https://br.indeed.com/jobs?q=programador&l={LOCAL.replace(' ', '+')}"
         log_info(f"🔗 {url}")
@@ -238,12 +273,15 @@ def buscar_vagas_indeed():
         driver.get(url)
         time.sleep(random.uniform(6, 9))
         
+        # Novo: Seletores expandidos para capturar mais vagas
         seletores_indeed = [
             "a[class*='jcs-JobTitle']",
             "[data-jk]",
             "a.jobTitle",
             ".job_seen_beacon a",
-            "a[href*='/viewjob']"
+            "a[href*='/viewjob']",
+            "h2 a",  # Novo: Títulos de vagas
+            ".jobtitle a"  # Novo: Outro padrão comum
         ]
         
         vagas = []
@@ -272,6 +310,8 @@ def buscar_vagas_indeed():
                 if filtrar_vaga_ti(titulo):
                     resultados.append(f"**{titulo}**\n{link}")
                     log_success(f"Indeed: {titulo[:50]}...")
+                else:
+                    log_info(f"Rejeitado (não TI): {titulo[:50]}...")  # Novo: Log para debug
                 
                 time.sleep(random.uniform(0.3, 0.8))
                     
@@ -347,4 +387,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
