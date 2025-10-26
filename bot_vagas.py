@@ -10,7 +10,7 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options as ChromeOptions  # Novo: Para opções do Chrome
+from selenium.webdriver.chrome.options import Options as ChromeOptions
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -39,7 +39,7 @@ def log_success(message): logging.info(f"✅ {message}")
 # 🎯 FILTRO DE VAGAS DE TI MELHORADO
 # ===========================
 def filtrar_vaga_ti(titulo):
-    """Filtro mais inteligente para vagas de TI"""
+    """Filtro inteligente para vagas de TI junior/estágio/auxiliar, excluindo pleno/senior"""
     if not titulo or len(titulo) < 5:
         return False
     
@@ -66,6 +66,16 @@ def filtrar_vaga_ti(titulo):
         'scrum', 'agile', 'product owner', 'po', 'scrum master'
     ]
     
+    # Novo: Termos para INCLUIR dentro de TI (junior, estagio, auxiliar, etc.)
+    termos_inclusao_ti = [
+        'auxiliar', 'assistente', 'estágio', 'estagiário', 'estagiária', 'junior', 'júnior', 'jr', 'jr.'
+    ]
+    
+    # Novo: Termos para EXCLUIR dentro de TI (pleno, senior, etc.)
+    termos_exclusao_ti = [
+        'pleno', 'sênior', 'senior', 'sr', 'sr.'
+    ]
+    
     termos_nao_ti = [
         'vendedor', 'comercial', 'representante', 'consultor comercial',
         'motorista', 'entregador', 'delivery',
@@ -85,8 +95,10 @@ def filtrar_vaga_ti(titulo):
     
     tem_termo_ti = any(termo in titulo_lower for termo in termos_ti)
     nao_tem_nao_ti = not any(termo in titulo_lower for termo in termos_nao_ti)
+    tem_inclusao = any(termo in titulo_lower for termo in termos_inclusao_ti)
+    nao_tem_exclusao = not any(termo in titulo_lower for termo in termos_exclusao_ti)
     
-    return tem_termo_ti and nao_tem_nao_ti
+    return tem_termo_ti and nao_tem_nao_ti and tem_inclusao and nao_tem_exclusao
 
 # ===========================
 # 🔍 BUSCA INFOJOBS
@@ -96,7 +108,6 @@ def buscar_vagas_infojobs():
     driver = None
     
     try:
-        # Novo: Opções para Chrome em CI
         options = ChromeOptions()
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
@@ -142,15 +153,13 @@ def buscar_vagas_infojobs():
                 if not titulo or len(titulo) < 5 or not link:
                     continue
                 
-                # Novo: Filtro extra por localização (prioriza Salvador/BA)
-                if "salvador" in titulo.lower() or "ba" in titulo.lower():
-                    if filtrar_vaga_ti(titulo):
-                        resultados.append(f"**{titulo}**\n{link}")
-                        log_success(f"InfoJobs: {titulo[:50]}...")
-                    else:
-                        log_info(f"Rejeitado (não TI): {titulo[:50]}...")  # Novo: Log para debug
+                log_info(f"Analisando vaga: {titulo[:50]}...")  # Novo: Log para debug
+                
+                if filtrar_vaga_ti(titulo):
+                    resultados.append(f"**{titulo}**\n{link}")
+                    log_success(f"InfoJobs: {titulo[:50]}...")
                 else:
-                    log_info(f"Ignorado (localização): {titulo[:50]}...")  # Novo: Log para debug
+                    log_info(f"Rejeitado: {titulo[:50]}...")  # Atualizado: Log genérico para debug
                 
                 time.sleep(random.uniform(0.3, 0.8))
                     
@@ -176,7 +185,6 @@ def buscar_vagas_catho():
     driver = None
     
     try:
-        # Novo: Opções para Chrome em CI
         options = ChromeOptions()
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
@@ -193,15 +201,16 @@ def buscar_vagas_catho():
         driver.get(url)
         time.sleep(random.uniform(7, 10))
         
-        # Novo: Seletores expandidos para capturar mais vagas
         seletores_catho = [
             "a[data-testid*='job']",
             "[data-id*='job']",
             "a[href*='/vaga/']",
             ".job-card a",
             "a[class*='job']",
-            "h3 a",  # Novo: Títulos de vagas
-            ".sc-1h4w872-0 a"  # Novo: Padrão comum no Catho
+            "h3 a",
+            ".sc-1h4w872-0 a",
+            ".job-item a",
+            ".search-result-item a"
         ]
         
         vagas = []
@@ -227,11 +236,13 @@ def buscar_vagas_catho():
                 if not titulo or len(titulo) < 5 or not link:
                     continue
                 
+                log_info(f"Analisando vaga: {titulo[:50]}...")  # Novo: Log para debug
+                
                 if filtrar_vaga_ti(titulo):
                     resultados.append(f"**{titulo}**\n{link}")
                     log_success(f"Catho: {titulo[:50]}...")
                 else:
-                    log_info(f"Rejeitado (não TI): {titulo[:50]}...")  # Novo: Log para debug
+                    log_info(f"Rejeitado: {titulo[:50]}...")  # Atualizado: Log genérico para debug
                 
                 time.sleep(random.uniform(0.3, 0.8))
                     
@@ -257,7 +268,6 @@ def buscar_vagas_indeed():
     driver = None
     
     try:
-        # Novo: Opções para Chrome em CI
         options = ChromeOptions()
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
@@ -273,15 +283,16 @@ def buscar_vagas_indeed():
         driver.get(url)
         time.sleep(random.uniform(6, 9))
         
-        # Novo: Seletores expandidos para capturar mais vagas
         seletores_indeed = [
             "a[class*='jcs-JobTitle']",
             "[data-jk]",
             "a.jobTitle",
             ".job_seen_beacon a",
             "a[href*='/viewjob']",
-            "h2 a",  # Novo: Títulos de vagas
-            ".jobtitle a"  # Novo: Outro padrão comum
+            "h2 a",
+            ".jobtitle a",
+            ".resultContent a",
+            ".jobsearch-ResultsList a"
         ]
         
         vagas = []
@@ -307,11 +318,13 @@ def buscar_vagas_indeed():
                 if not titulo or len(titulo) < 5 or not link:
                     continue
                 
+                log_info(f"Analisando vaga: {titulo[:50]}...")  # Novo: Log para debug
+                
                 if filtrar_vaga_ti(titulo):
                     resultados.append(f"**{titulo}**\n{link}")
                     log_success(f"Indeed: {titulo[:50]}...")
                 else:
-                    log_info(f"Rejeitado (não TI): {titulo[:50]}...")  # Novo: Log para debug
+                    log_info(f"Rejeitado: {titulo[:50]}...")  # Atualizado: Log genérico para debug
                 
                 time.sleep(random.uniform(0.3, 0.8))
                     
