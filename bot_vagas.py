@@ -6,14 +6,10 @@ import time
 import random
 import logging
 import requests
-from selenium import webdriver
+import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -37,100 +33,6 @@ def setup_logging():
 def log_info(message): logging.info(f"📝 {message}")
 def log_error(message): logging.error(f"❌ {message}")
 def log_success(message): logging.info(f"✅ {message}")
-
-# ===========================
-# 🛠️ CONFIGURAÇÃO CHROME ANTI-DETECTION AVANÇADA
-# ===========================
-def setup_chrome_stealth():
-    """Configuração ULTRA stealth para evitar detecção"""
-    options = Options()
-    
-    # Usar browser real (não headless é mais seguro)
-    # options.add_argument("--headless=new")  # REMOVER PARA TESTES
-    
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
-    
-    # ANTI-DETECTION CRÍTICO
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-plugins")
-    
-    # REMOVER SINAIS DE WEBDRIVER
-    options.add_experimental_option("excludeSwitches", [
-        "enable-automation",
-        "enable-logging",
-        "enable-features"
-    ])
-    options.add_experimental_option('useAutomationExtension', False)
-    options.add_experimental_option("w3c", False)
-    
-    # User agents realistas (rotaciona)
-    user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    ]
-    options.add_argument(f"user-agent={random.choice(user_agents)}")
-    
-    return options
-
-def injetar_stealth_scripts(driver):
-    """Injeta JavaScript para mascarar automação"""
-    scripts = [
-        """
-        Object.defineProperty(navigator, 'webdriver', {
-            get: () => undefined
-        });
-        """,
-        """
-        Object.defineProperty(navigator, 'plugins', {
-            get: () => [1, 2, 3, 4, 5]
-        });
-        """,
-        """
-        Object.defineProperty(navigator, 'languages', {
-            get: () => ['pt-BR', 'pt', 'en']
-        });
-        """,
-        """
-        window.chrome = { runtime: {} };
-        """,
-        """
-        Object.defineProperty(document, 'hidden', {
-            get: () => false
-        });
-        """
-    ]
-    
-    for script in scripts:
-        try:
-            driver.execute_script(script)
-        except:
-            pass
-
-def simular_comportamento_humano(driver):
-    """Simula cliques e movimentos de mouse como humano"""
-    try:
-        actions = ActionChains(driver)
-        
-        # Scroll aleatório
-        for _ in range(random.randint(2, 4)):
-            driver.execute_script("window.scrollBy(0, window.innerHeight);")
-            time.sleep(random.uniform(0.5, 1.5))
-        
-        driver.execute_script("window.scrollBy(0, -document.body.scrollHeight);")
-        time.sleep(random.uniform(1, 2))
-        
-        # Mover mouse
-        actions.move_by_offset(random.randint(100, 500), random.randint(100, 500))
-        actions.perform()
-        
-    except:
-        pass
 
 # ===========================
 # 🎯 FILTRO DE VAGAS DE TI MELHORADO
@@ -186,28 +88,20 @@ def filtrar_vaga_ti(titulo):
     return tem_termo_ti and nao_tem_nao_ti
 
 # ===========================
-# 🔍 BUSCA INFOJOBS MELHORADA
+# 🔍 BUSCA INFOJOBS
 # ===========================
 def buscar_vagas_infojobs():
     log_info("🌐 Buscando no InfoJobs...")
     driver = None
     
     try:
-        options = setup_chrome_stealth()
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
-        injetar_stealth_scripts(driver)
-        
-        # Delay inicial
-        time.sleep(random.uniform(2, 4))
+        driver = uc.Chrome(headless=True, use_subprocess=False)
         
         url = f"https://www.infojobs.com.br/vagas-de-emprego-{LOCAL.replace(',', '').replace(' ', '-').lower()}.aspx?palabra=desenvolvedor"
-        log_info(f"🔗 InfoJobs: {url}")
+        log_info(f"🔗 {url}")
         
         driver.get(url)
         time.sleep(random.uniform(5, 8))
-        
-        simular_comportamento_humano(driver)
         
         seletores = [
             "a.js_vacancyTitle",
@@ -246,7 +140,6 @@ def buscar_vagas_infojobs():
                 time.sleep(random.uniform(0.3, 0.8))
                     
             except Exception as e:
-                log_error(f"Erro processando vaga: {e}")
                 continue
         
         log_info(f"📊 InfoJobs: {len(resultados)} vagas filtradas")
@@ -261,27 +154,21 @@ def buscar_vagas_infojobs():
             time.sleep(random.uniform(2, 3))
 
 # ===========================
-# 🔍 BUSCA CATHO (ALTERNATIVA)
+# 🔍 BUSCA CATHO
 # ===========================
 def buscar_vagas_catho():
     log_info("🌐 Buscando na Catho...")
     driver = None
     
     try:
-        options = setup_chrome_stealth()
-        driver = webdriver.Chrome(options=options)
-        injetar_stealth_scripts(driver)
-        
-        time.sleep(random.uniform(2, 4))
+        driver = uc.Chrome(headless=True, use_subprocess=False)
         
         local_catho = LOCAL.replace(',', '').replace(' ', '-').lower()
         url = f"https://www.catho.com.br/vagas/{local_catho}/?q=desenvolvedor"
-        log_info(f"🔗 Catho: {url}")
+        log_info(f"🔗 {url}")
         
         driver.get(url)
         time.sleep(random.uniform(7, 10))
-        
-        simular_comportamento_humano(driver)
         
         seletores_catho = [
             "a[data-testid*='job']",
@@ -300,7 +187,7 @@ def buscar_vagas_catho():
                 elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
                 if elementos:
                     vagas = elementos
-                    log_info(f"🔍 {len(vagas)} vagas com: {seletor}")
+                    log_info(f"🔍 {len(vagas)} vagas")
                     break
             except:
                 continue
@@ -321,7 +208,6 @@ def buscar_vagas_catho():
                 time.sleep(random.uniform(0.3, 0.8))
                     
             except Exception as e:
-                log_error(f"Erro processando vaga Catho: {e}")
                 continue
         
         log_info(f"📊 Catho: {len(resultados)} vagas filtradas")
@@ -336,26 +222,20 @@ def buscar_vagas_catho():
             time.sleep(random.uniform(2, 3))
 
 # ===========================
-# 🔍 BUSCA INDEED COM FALLBACKS
+# 🔍 BUSCA INDEED
 # ===========================
 def buscar_vagas_indeed():
     log_info("🌐 Buscando no Indeed...")
     driver = None
     
     try:
-        options = setup_chrome_stealth()
-        driver = webdriver.Chrome(options=options)
-        injetar_stealth_scripts(driver)
-        
-        time.sleep(random.uniform(2, 4))
+        driver = uc.Chrome(headless=True, use_subprocess=False)
         
         url = f"https://br.indeed.com/jobs?q=programador&l={LOCAL.replace(' ', '+')}"
-        log_info(f"🔗 Indeed: {url}")
+        log_info(f"🔗 {url}")
         
         driver.get(url)
         time.sleep(random.uniform(6, 9))
-        
-        simular_comportamento_humano(driver)
         
         seletores_indeed = [
             "a[class*='jcs-JobTitle']",
@@ -374,7 +254,7 @@ def buscar_vagas_indeed():
                 elementos = driver.find_elements(By.CSS_SELECTOR, seletor)
                 if elementos and len(elementos) > 2:
                     vagas = elementos
-                    log_info(f"🔍 {len(vagas)} vagas com: {seletor}")
+                    log_info(f"🔍 {len(vagas)} vagas")
                     break
             except:
                 continue
@@ -395,7 +275,6 @@ def buscar_vagas_indeed():
                 time.sleep(random.uniform(0.3, 0.8))
                     
             except Exception as e:
-                log_error(f"Erro processando vaga Indeed: {e}")
                 continue
         
         log_info(f"📊 Indeed: {len(resultados)} vagas filtradas")
@@ -445,7 +324,6 @@ def main():
     
     log_info("🔄 Testando diferentes plataformas...")
     
-    # Delays entre requisições
     vagas_indeed = buscar_vagas_indeed()
     time.sleep(random.uniform(5, 10))
     
@@ -468,4 +346,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
