@@ -7,13 +7,6 @@ on:
     - cron: '0 11,14,17,20,23 * * *'
   workflow_dispatch:  # Permite executar manualmente
 
-name: Bot Vagas TI
-
-on:
-  schedule:
-    - cron: '0 11,14,17,20,23 * * *'
-  workflow_dispatch:
-
 jobs:
   buscar-vagas:
     runs-on: ubuntu-latest
@@ -29,29 +22,6 @@ jobs:
         python-version: '3.11'
         cache: 'pip'
         
-    - name: 📂 Listar arquivos da raiz
-      run: |
-        echo "=== ARQUIVOS NA RAIZ ==="
-        ls -la
-        echo ""
-        echo "=== VERIFICAR bot_vagas.py ==="
-        if [ -f "scripts/bot_vagas.py" ]; then
-          echo "✅ scripts/bot_vagas.py ENCONTRADO"
-          wc -l scripts/bot_vagas.py
-        else
-          echo "❌ scripts/bot_vagas.py NÃO ENCONTRADO"
-          find . -name "*vagas*" -type f
-        fi
-        
-    - name: 📄 Verificar requirements.txt
-      run: |
-        echo "=== CONTEÚDO DE requirements.txt ==="
-        if [ -f "requirements.txt" ]; then
-          cat requirements.txt
-        else
-          echo "❌ requirements.txt NÃO ENCONTRADO"
-        fi
-        
     - name: 🌐 Instalar Chromium
       run: |
         sudo apt-get update
@@ -60,33 +30,17 @@ jobs:
         
     - name: ✅ Verificar instalações
       run: |
-        echo "=== VERIFICANDO INSTALAÇÕES ==="
-        echo "Chromium:"
+        echo "✅ Chromium:"
         chromium-browser --version
-        echo "ChromeDriver:"
+        echo "✅ ChromeDriver:"
         chromedriver --version
-        echo "Python:"
+        echo "✅ Python:"
         python --version
         
     - name: 📦 Instalar dependências Python
       run: |
-        echo "=== INSTALANDO DEPENDÊNCIAS ==="
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        echo ""
-        echo "=== PACOTES INSTALADOS ==="
-        pip list | grep -E "selenium|requests|dotenv|webdriver"
-        
-    - name: 🔍 Verificar sintaxe do script
-      run: |
-        echo "=== VERIFICANDO SINTAXE ==="
-        python -m py_compile scripts/bot_vagas.py
-        if [ $? -eq 0 ]; then
-          echo "✅ Sintaxe OK"
-        else
-          echo "❌ ERRO DE SINTAXE"
-          exit 1
-        fi
         
     - name: 🚀 Executar Bot de Vagas
       env:
@@ -94,32 +48,19 @@ jobs:
         LOCAL: "Salvador, BA"
         PYTHONUNBUFFERED: 1
       run: |
-        echo "=== INICIANDO SCRIPT ==="
+        echo "🚀 Iniciando busca automática de vagas..."
         echo "Timestamp: $(date)"
-        echo "LOCAL: $LOCAL"
-        echo "DISCORD_WEBHOOK_URL configurado: $([ -n "$DISCORD_WEBHOOK_URL" ] && echo 'SIM' || echo 'NÃO')"
-        echo ""
-        echo "=== EXECUTANDO ==="
-        python scripts/bot_vagas.py
-        echo ""
-        echo "=== SCRIPT FINALIZADO ==="
-        echo "Exit code: $?"
+        python bot_vagas.py
         
     - name: ✅ Sucesso
       if: success()
       run: |
         echo "✅ Bot executado com sucesso!"
-        echo "Timestamp: $(date)"
+        echo "Próxima execução no próximo horário agendado"
         
-    - name: ❌ Erro - Debug
+    - name: ❌ Notificar Erro
       if: failure()
       run: |
-        echo "❌ FALHA NA EXECUÇÃO"
-        echo ""
-        echo "CHECKLIST:"
-        echo "1. bot_vagas.py existe? $([ -f 'scripts/bot_vagas.py' ] && echo 'SIM ✅' || echo 'NÃO ❌')"
-        echo "2. requirements.txt existe? $([ -f 'requirements.txt' ] && echo 'SIM ✅' || echo 'NÃO ❌')"
-        echo "3. DISCORD_WEBHOOK_URL configurado? $([ -n '${{ secrets.DISCORD_WEBHOOK_URL }}' ] && echo 'SIM ✅' || echo 'NÃO ❌')"
-        echo "4. Chrome instalado? $(which chromium-browser > /dev/null && echo 'SIM ✅' || echo 'NÃO ❌')"
-        echo ""
-        echo "Verifique os logs acima para mais detalhes!"
+        curl -X POST ${{ secrets.DISCORD_WEBHOOK_URL }} \
+          -H 'Content-Type: application/json' \
+          -d '{"content":"❌ Erro ao executar bot de vagas. Verifique os logs no GitHub Actions."}' || true
