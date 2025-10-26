@@ -12,6 +12,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -192,7 +194,8 @@ def buscar_vagas_infojobs():
     
     try:
         options = setup_chrome_stealth()
-        driver = webdriver.Chrome(options=options)
+        service = Service(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
         injetar_stealth_scripts(driver)
         
         # Delay inicial
@@ -465,3 +468,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
