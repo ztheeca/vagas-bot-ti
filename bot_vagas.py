@@ -304,7 +304,7 @@ def buscar_todas_plataformas():
     todas_vagas = []
     
     # ===========================
-    # LINKEDIN
+    # LINKEDIN - Formato: ?keywords=TERMO&location=Salvador
     # ===========================
     if SITES_ATIVOS['linkedin']:
         log_info("🌐 Buscando no LinkedIn...")
@@ -316,9 +316,9 @@ def buscar_todas_plataformas():
         ]
         
         for termo in TERMOS_BUSCA[:2]:
-            local_linkedin = LOCAL.replace(',', '').replace(' ', '%20')
-            # LinkedIn requer localização codificada
-            url_linkedin = f"https://www.linkedin.com/jobs/search/?keywords={{termo}}&location={local_linkedin}"
+            # LinkedIn: keywords + location + geoId
+            termo_encoded = termo.replace(' ', '%20')
+            url_linkedin = f"https://www.linkedin.com/jobs/search/?keywords={termo_encoded}&location=Salvador%2C%20Bahia%2C%20Brazil&geoId=103644718&f_TPR=r604800"
             vagas = buscar_vagas_site("LinkedIn", url_linkedin, xpaths_linkedin, termo, wait_time=6)
             todas_vagas.extend(vagas)
             time.sleep(random.uniform(5, 8))
@@ -326,7 +326,7 @@ def buscar_todas_plataformas():
         log_info(f"📊 LinkedIn: {len([v for v in todas_vagas])} vagas")
     
     # ===========================
-    # GLASSDOOR
+    # GLASSDOOR - Formato: /salvador-TERMO-vagas
     # ===========================
     if SITES_ATIVOS['glassdoor']:
         log_info("🌐 Buscando no Glassdoor...")
@@ -339,9 +339,9 @@ def buscar_todas_plataformas():
         
         count_inicial = len(todas_vagas)
         for termo in TERMOS_BUSCA[:2]:
-            # Glassdoor BR usa estrutura diferente
-            termo_encoded = termo.replace(' ', '%20')
-            url_glassdoor = f"https://www.glassdoor.com.br/Vaga/brasil-{{termo}}-vagas-SRCH_IL.0,6_IN36_KO7.htm"
+            # Glassdoor: /Vaga/salvador-TERMO-vagas
+            termo_formatado = termo.replace(' ', '-').lower()
+            url_glassdoor = f"https://www.glassdoor.com.br/Vaga/salvador-{termo_formatado}-vagas-SRCH_IL.0,8_IC2613892_KO9.htm"
             vagas = buscar_vagas_site("Glassdoor", url_glassdoor, xpaths_glassdoor, termo, wait_time=7)
             todas_vagas.extend(vagas)
             time.sleep(random.uniform(6, 9))
@@ -349,7 +349,7 @@ def buscar_todas_plataformas():
         log_info(f"📊 Glassdoor: {len(todas_vagas) - count_inicial} vagas")
     
     # ===========================
-    # CATHO
+    # CATHO - Formato: /vagas/TERMO/salvador-ba
     # ===========================
     if SITES_ATIVOS['catho']:
         log_info("🌐 Buscando na Catho...")
@@ -361,8 +361,9 @@ def buscar_todas_plataformas():
         
         count_inicial = len(todas_vagas)
         for termo in TERMOS_BUSCA[:3]:
-            local_catho = LOCAL.replace(',', '').replace(' ', '-').lower()
-            url_catho = f"https://www.catho.com.br/vagas/{local_catho}/?q={{termo}}"
+            # Catho: /vagas/TERMO/salvador-ba
+            termo_formatado = termo.replace(' ', '-').lower()
+            url_catho = f"https://www.catho.com.br/vagas/{termo_formatado}/salvador-ba"
             vagas = buscar_vagas_site("Catho", url_catho, xpaths_catho, termo, wait_time=5)
             todas_vagas.extend(vagas)
             time.sleep(random.uniform(3, 5))
@@ -370,7 +371,7 @@ def buscar_todas_plataformas():
         log_info(f"📊 Catho: {len(todas_vagas) - count_inicial} vagas")
     
     # ===========================
-    # INFOJOBS
+    # INFOJOBS - Formato: /TERMO-em-salvador-ba
     # ===========================
     if SITES_ATIVOS['infojobs']:
         log_info("🌐 Buscando no InfoJobs...")
@@ -382,8 +383,9 @@ def buscar_todas_plataformas():
         
         count_inicial = len(todas_vagas)
         for termo in TERMOS_BUSCA[:2]:
-            local_info = LOCAL.replace(',', '').replace(' ', '-').lower()
-            url_info = f"https://www.infojobs.com.br/vagas-de-emprego-{local_info}.aspx?palavra={{termo}}"
+            # InfoJobs: /emprego-TERMO-em-salvador-ba
+            termo_formatado = termo.replace(' ', '-').lower()
+            url_info = f"https://www.infojobs.com.br/empregos-{termo_formatado}-em-salvador-ba.aspx"
             vagas = buscar_vagas_site("InfoJobs", url_info, xpaths_infojobs, termo, wait_time=5)
             todas_vagas.extend(vagas)
             time.sleep(random.uniform(3, 5))
@@ -391,7 +393,7 @@ def buscar_todas_plataformas():
         log_info(f"📊 InfoJobs: {len(todas_vagas) - count_inicial} vagas")
     
     # Remover duplicatas finais
-    vagas_unicas = list(dict.fromkeys(todas_vagas))  # Mantém a ordem
+    vagas_unicas = list(dict.fromkeys(todas_vagas))
     return vagas_unicas
 
 # ===========================
