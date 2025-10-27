@@ -174,11 +174,12 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
         
         driver = uc.Chrome(options=options, use_subprocess=False)
         
-        # ... resto do código
     except Exception as e:
         log_error(f"{site_nome}: Erro ao iniciar - {str(e)[:60]}")
         return []
-    
+
+
+    try:
         url = url_template.format(termo=termo_busca.replace(' ', '+'), local=LOCAL.replace(' ', '+').replace(',', ''))
         log_info(f"🔗 {site_nome}: {termo_busca}")
         
@@ -412,5 +413,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
