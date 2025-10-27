@@ -113,6 +113,12 @@ def filtrar_vaga_ti(titulo, site_nome=""):
         'marketing', 'arquivologia', 'licitações', 'licitacao',
         'suprimentos', 'supply chain', 'contábil', 'contabil',
         'administrativo', 'vendedor', 'comercial'
+        'marketing', 'arquivologia', 'licitações', 'licitacao',
+        'suprimentos', 'supply chain', 'contábil', 'contabil',
+        'administrativo', 'vendedor', 'comercial',
+        'farmacêutico', 'farmaceutico', 'farmácia', 'farmacia', 
+        'enfermeiro', 'médico', 'medico', 'saúde', 'saude',
+        'professor', 'educador', 'pedagogo'
     ]
     
     if any(termo in titulo_lower for termo in rejeicao_imediata):
@@ -204,7 +210,7 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
     
     try:
         options = ChromeOptions()
-        options.binary_location = "/usr/bin/google-chrome-stable"  # Força o uso do Chrome instalado
+        options.binary_location = "/usr/bin/google-chrome-stable"
         options.add_argument('--no-sandbox')
         options.add_argument('--disable-dev-shm-usage')
         options.add_argument('--disable-gpu')
@@ -217,8 +223,7 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
     except Exception as e:
         log_error(f"{site_nome}: Erro ao iniciar - {str(e)[:60]}")
         return []
-
-
+    
     try:
         url = url_template.format(termo=termo_busca.replace(' ', '+'), local=LOCAL.replace(' ', '+').replace(',', ''))
         log_info(f"🔗 {site_nome}: {termo_busca}")
@@ -226,6 +231,7 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
         driver.get(url)
         time.sleep(random.uniform(wait_time, wait_time + 3))
         
+        # ✅ TENTAR MÚLTIPLOS XPaths até encontrar
         vagas = []
         for xpath in xpaths:
             try:
@@ -234,11 +240,23 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
                 )
                 elementos = driver.find_elements(By.XPATH, xpath)
                 if elementos and len(elementos) > 2:
-                    log_info(f"✓ {site_nome}: {len(elementos)} elementos encontrados")
+                    log_info(f"✓ {site_nome}: {len(elementos)} elementos com XPath: {xpath[:50]}...")
                     vagas = elementos
                     break
             except:
                 continue
+        
+        # ✅ SE NÃO ENCONTROU, tentar buscar TODOS os links
+        if not vagas:
+            log_info(f"⚠ {site_nome}: Tentando busca genérica de links...")
+            try:
+                todos_links = driver.find_elements(By.TAG_NAME, "a")
+                # Filtrar apenas links que parecem ser de vagas
+                vagas = [link for link in todos_links if link.get_attribute("href") and len(link.text.strip()) > 10]
+                if vagas:
+                    log_info(f"✓ {site_nome}: {len(vagas)} links encontrados (busca genérica)")
+            except:
+                pass
         
         if not vagas:
             log_info(f"⚠ {site_nome}: Nenhum elemento encontrado")
@@ -247,7 +265,7 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
         resultados = []
         vagas_vistas = set()
         
-        for job in vagas[:20]:
+        for job in vagas[:30]:  # ← Aumentar de 20 para 30
             try:
                 titulo = job.text.strip()
                 link = job.get_attribute("href")
@@ -259,9 +277,9 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
                 if titulo in vagas_vistas:
                     continue
                 
-                # Validação RIGOROSA - precisa ter pelo menos 2 palavras válidas
-                palavras_validas_primary = ['desenvolvedor', 'programador', 'ti', 'tecnologia', 'software', 'suporte técnico', 'help desk']
-                palavras_validas_secondary = ['vaga', 'emprego', 'job', 'analista', 'técnico', 'estagio', 'junior', 'tech', 'developer']
+                # Validação RIGOROSA
+                palavras_validas_primary = ['desenvolvedor', 'programador', 'ti', 'tecnologia', 'software', 'suporte técnico', 'help desk', 'estagio', 'estágio']
+                palavras_validas_secondary = ['vaga', 'emprego', 'job', 'analista', 'técnico', 'junior', 'tech', 'developer', 'auxiliar']
                 
                 tem_primary = any(p in titulo.lower() for p in palavras_validas_primary)
                 tem_secondary = any(p in titulo.lower() for p in palavras_validas_secondary)
@@ -270,7 +288,7 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
                     continue
                 
                 if filtrar_vaga_ti(titulo, site_nome):
-                    # ✅ ADICIONAR VALIDAÇÃO DE LOCALIZAÇÃO
+                    # ✅ VALIDAR LOCALIZAÇÃO
                     if validar_localizacao(titulo, link):
                         resultados.append(f"**{titulo}**\n{link}")
                         vagas_vistas.add(titulo)
@@ -309,11 +327,13 @@ def buscar_todas_plataformas():
     if SITES_ATIVOS['linkedin']:
         log_info("🌐 Buscando no LinkedIn...")
         xpaths_linkedin = [
-            "//a[contains(@href, '/jobs/view/')]",
-            "//div[contains(@class, 'job-card')]//a",
-            "//div[contains(@class, 'base-search-card')]//a",
-            "//h3[contains(@class, 'job-card')]//a"
-        ]
+    "//a[contains(@href, '/jobs/view/')]",
+    "//div[contains(@class, 'base-card')]//a",
+    "//li[contains(@class, 'jobs-search')]//a",
+    "//div[contains(@class, 'job-search-card')]//a",
+    "//span[contains(@class, 'job-title')]//ancestor::a",
+    "//a"  # ← Fallback: todos os links
+]
         
         for termo in TERMOS_BUSCA[:2]:
             # LinkedIn: keywords + location + geoId
@@ -331,11 +351,12 @@ def buscar_todas_plataformas():
     if SITES_ATIVOS['glassdoor']:
         log_info("🌐 Buscando no Glassdoor...")
         xpaths_glassdoor = [
-            "//a[contains(@class, 'JobCard_jobTitle') or contains(@class, 'job-title')]",
-            "//a[contains(@data-test, 'job-link')]",
-            "//h2[contains(@class, 'jobTitle')]//a",
-            "//div[contains(@class, 'JobCard')]//a[contains(@href, '/job/')]"
-        ]
+    "//a[contains(@data-test, 'job-link')]",
+    "//a[contains(@class, 'JobCard')]",
+    "//a[contains(@class, 'job')]",
+    "//article//a",
+    "//a"  # ← Fallback
+]
         
         count_inicial = len(todas_vagas)
         for termo in TERMOS_BUSCA[:2]:
@@ -376,10 +397,12 @@ def buscar_todas_plataformas():
     if SITES_ATIVOS['infojobs']:
         log_info("🌐 Buscando no InfoJobs...")
         xpaths_infojobs = [
-            "//div[contains(@class, 'job') or contains(@class, 'vacancy')]//a",
-            "//article//a",
-            "//h3//a | //h2//a"
-        ]
+    "//a[contains(@class, 'js-o-link')]",
+    "//a[contains(@class, 'job')]",
+    "//div[contains(@class, 'element-vaga')]//a",
+    "//article//a",
+    "//a"  # ← Fallback
+]
         
         count_inicial = len(todas_vagas)
         for termo in TERMOS_BUSCA[:2]:
