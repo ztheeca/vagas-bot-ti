@@ -59,6 +59,46 @@ def log_error(message): logging.error(f"❌ {message}")
 def log_success(message): logging.info(f"✅ {message}")
 
 # ===========================
+# 📍 VALIDAÇÃO DE LOCALIZAÇÃO
+# ===========================
+def validar_localizacao(titulo, link=""):
+    """Valida se a vaga é de Salvador/BA ou remota"""
+    texto_completo = f"{titulo} {link}".lower()
+    
+    # Localizações ACEITAS
+    locais_aceitos = [
+        'salvador', 'bahia', 'ba',
+        'remoto', 'remota', 'home office', 'homeoffice',
+        'anywhere', 'qualquer lugar', 'todo brasil'
+    ]
+    
+    # Localizações REJEITADAS (outras cidades/estados)
+    locais_rejeitados = [
+        'curitiba', 'paraná', 'pr',
+        'são paulo', 'sp', 'paulista',
+        'rio de janeiro', 'rj',
+        'belo horizonte', 'minas', 'mg',
+        'brasília', 'df',
+        'porto alegre', 'rs',
+        'florianópolis', 'sc',
+        'recife', 'pe',
+        'fortaleza', 'ce',
+        'goiânia', 'go'
+    ]
+    
+    # Se menciona cidade rejeitada, bloquear
+    if any(local in texto_completo for local in locais_rejeitados):
+        return False
+    
+    # Se não menciona localização OU menciona Salvador/remoto, aceitar
+    tem_localizacao_aceita = any(local in texto_completo for local in locais_aceitos)
+    tem_localizacao_qualquer = any(local in texto_completo for local in locais_rejeitados + locais_aceitos)
+    
+    # Se não tem nenhuma localização mencionada OU tem Salvador/remoto, aceita
+    return not tem_localizacao_qualquer or tem_localizacao_aceita
+
+
+# ===========================
 # 🎯 FILTRO DE VAGAS
 # ===========================
 def filtrar_vaga_ti(titulo, site_nome=""):
@@ -230,9 +270,13 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
                     continue
                 
                 if filtrar_vaga_ti(titulo, site_nome):
-                    resultados.append(f"**{titulo}**\n{link}")
-                    vagas_vistas.add(titulo)
-                    log_success(f"{site_nome}: {titulo[:60]}...")
+                    # ✅ ADICIONAR VALIDAÇÃO DE LOCALIZAÇÃO
+                    if validar_localizacao(titulo, link):
+                        resultados.append(f"**{titulo}**\n{link}")
+                        vagas_vistas.add(titulo)
+                        log_success(f"{site_nome}: {titulo[:60]}...")
+                    else:
+                        log_info(f"🚫 {site_nome}: Localização incorreta - {titulo[:60]}...")
                 
                 time.sleep(random.uniform(0.2, 0.5))
                     
@@ -365,25 +409,41 @@ def enviar_discord(vagas):
             pass
         return
     
-    # Formatar mensagem mais bonita
+    LIMITE_DISCORD = 1900  # Margem de segurança (Discord permite 2000)
+    
     mensagem_header = f"🎯 **{len(vagas)} Vagas de TI em {LOCAL}**\n"
     mensagem_header += f"📅 {time.strftime('%d/%m/%Y às %H:%M')}\n"
     mensagem_header += "─" * 50 + "\n\n"
     
-    # Limitar a 10 vagas por mensagem (limite do Discord)
-    vagas_formatadas = "\n\n".join(vagas[:10])
-    mensagem = mensagem_header + vagas_formatadas
-    
     try:
-        requests.post(DISCORD_WEBHOOK_URL, json={"content": mensagem}, timeout=10)
-        log_success("📤 Mensagem enviada para Discord!")
+        # Primeira mensagem
+        mensagem_atual = mensagem_header
+        vagas_na_mensagem = []
+        lote = 1
         
-        # Se houver mais de 10 vagas, enviar em mensagem separada
-        if len(vagas) > 10:
-            time.sleep(2)
-            mensagem_extra = f"📋 **Mais {len(vagas) - 10} vagas:**\n\n" + "\n\n".join(vagas[10:15])
-            requests.post(DISCORD_WEBHOOK_URL, json={"content": mensagem_extra}, timeout=10)
-            log_success("📤 Mensagem adicional enviada!")
+        for i, vaga in enumerate(vagas):
+            vaga_formatada = f"{vaga}\n\n"
+            
+            # Se adicionar essa vaga ultrapassar o limite, enviar mensagem atual
+            if len(mensagem_atual + vaga_formatada) > LIMITE_DISCORD:
+                # Enviar mensagem atual
+                requests.post(DISCORD_WEBHOOK_URL, json={"content": mensagem_atual}, timeout=10)
+                log_success(f"📤 Lote {lote} enviado! ({len(vagas_na_mensagem)} vagas)")
+                
+                # Preparar próxima mensagem
+                time.sleep(2)
+                lote += 1
+                mensagem_atual = f"📋 **Continuação (Lote {lote}):**\n\n{vaga_formatada}"
+                vagas_na_mensagem = [vaga]
+            else:
+                # Adicionar vaga à mensagem atual
+                mensagem_atual += vaga_formatada
+                vagas_na_mensagem.append(vaga)
+        
+        # Enviar última mensagem (se houver vagas restantes)
+        if vagas_na_mensagem:
+            requests.post(DISCORD_WEBHOOK_URL, json={"content": mensagem_atual}, timeout=10)
+            log_success(f"📤 Lote {lote} enviado! ({len(vagas_na_mensagem)} vagas)")
             
     except Exception as e:
         log_error(f"Erro Discord: {e}")
@@ -413,6 +473,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
