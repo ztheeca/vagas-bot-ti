@@ -164,20 +164,21 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
     
     try:
         options = ChromeOptions()
-options.binary_location = "/usr/bin/google-chrome-stable"  # <-- NOVO: Força o uso do Chrome instalado
-options.add_argument('--no-sandbox')
-options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--disable-gpu')
-options.add_argument('--headless')
-options.add_argument('--window-size=1920,1080')
-options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        options.binary_location = "/usr/bin/google-chrome-stable"  # Força o uso do Chrome instalado
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--disable-gpu')
+        options.add_argument('--headless')
+        options.add_argument('--window-size=1920,1080')
+        options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
         
-        try:
-            driver = uc.Chrome(options=options, use_subprocess=False)
-        except Exception as e:
-            log_error(f"{site_nome}: Erro ao iniciar - {str(e)[:60]}")
-            return []
+        driver = uc.Chrome(options=options, use_subprocess=False)
         
+        # ... resto do código
+    except Exception as e:
+        log_error(f"{site_nome}: Erro ao iniciar - {str(e)[:60]}")
+        return []
+    
         url = url_template.format(termo=termo_busca.replace(' ', '+'), local=LOCAL.replace(' ', '+').replace(',', ''))
         log_info(f"🔗 {site_nome}: {termo_busca}")
         
@@ -411,4 +412,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
