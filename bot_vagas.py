@@ -102,104 +102,86 @@ def validar_localizacao(titulo, link=""):
 # 🎯 FILTRO DE VAGAS
 # ===========================
 def filtrar_vaga_ti(titulo, site_nome=""):
-    """Filtro MENOS restritivo - aceita tudo exceto sênior e não-TI"""
+    """Filtro RIGOROSO - apenas vagas de TI"""
     if not titulo or len(titulo) < 8:
         return False
     
     titulo_lower = titulo.lower()
     
-    # REJEIÇÃO IMEDIATA para termos óbvios não-TI
-    rejeicao_imediata = [
-        'marketing', 'arquivologia', 'licitações', 'licitacao',
-        'suprimentos', 'supply chain', 'contábil', 'contabil',
-        'administrativo', 'vendedor', 'comercial'
-        'marketing', 'arquivologia', 'licitações', 'licitacao',
-        'suprimentos', 'supply chain', 'contábil', 'contabil',
-        'administrativo', 'vendedor', 'comercial',
-        'farmacêutico', 'farmaceutico', 'farmácia', 'farmacia', 
-        'enfermeiro', 'médico', 'medico', 'saúde', 'saude',
-        'professor', 'educador', 'pedagogo'
+    # ❌ REJEITAR textos de interface/menu/cookies
+    textos_interface = [
+        'cookie', 'consentimento', 'não venda', 'privacidade',
+        'termos', 'política', 'ajuda', 'sobre', 'contato',
+        'login', 'cadastr', 'entrar', 'sair', 'perfil',
+        'notificações', 'configurações', 'salvar', 'favoritar'
     ]
     
-    if any(termo in titulo_lower for termo in rejeicao_imediata):
-        # EXCEÇÃO: Se tem "tech" ou "tecnologia" junto, pode ser válido
-        if not any(t in titulo_lower for t in ['tech', 'tecnologia', 'ti ']):
-            return False
-    
-    # Termos TI
-    termos_ti = [
-        'ti', 'tecnologia', 'informação', 'informacao', 'tech',
-        'desenvolvedor', 'developer', 'dev',
-        'programador', 'programadora', 'programação',
-        'analista', 'técnico', 'tecnico',
-        'software', 'sistema', 'web', 'mobile', 'app',
-        'java', 'python', 'javascript', 'php', 'c#', '.net',
-        'react', 'angular', 'node', 'sql', 'database',
-        'cloud', 'aws', 'azure', 'devops', 'docker',
-        'ux', 'ui', 'dados', 'data', 'bi', 'analytics',
-        'segurança', 'cyber', 'redes', 'infra',
-        'suporte', 'help desk', 'service desk',
-        'qa', 'teste', 'tester', 'quality',
-        'scrum', 'agile', 'product'
-    ]
-    
-    # Rejeitar APENAS sênior
-    termos_senior = [
-        'sênior', 'senior', 'sr.', 'sr ', ' sr',
-        'coordenador', 'gerente', 'diretor',
-        'tech lead', 'principal', 'head'
-    ]
-    
-    # Rejeitar não-TI (LISTA EXPANDIDA)
-    termos_nao_ti = [
-        # Vendas e Comercial
-        'vendedor', 'comercial', 'representante',
-        
-        # Operacional
-        'motorista', 'entregador', 'delivery',
-        
-        # Administrativo (NÃO TI)
-        'administrativo', 'administração', 'administracion',
-        'recepcionista', 'secretária', 'office boy',
-        'auxiliar administrativo', 'assistente administrativo',
-        
-        # Contábil e Financeiro
-        'contador', 'contábil', 'contable', 'accounting',
-        'financeiro', 'tesoureiro', 'fiscal',
-        
-        # RH
-        'recursos humanos', 'rh', 'recrutador',
-        
-        # Marketing (que não seja tech)
-        'social media', 'copywriter', 'redator',
-        
-        # Outras profissões
-        'professor', 'educador', 'instrutor',
-        'enfermeiro', 'médico', 'fisioterapeuta',
-        'advogado', 'jurídico', 'paralegal',
-        'atendente', 'caixa', 'garçom', 'cozinheiro',
-        
-        # Arquitetura e Engenharia Civil
-        'arquivologia', 'arquivista', 'obra',
-        'proyectos sociales', 'rr.hh',
-        
-        # Licitações e Suprimentos (NÃO TI)
-        'licitações', 'licitacao', 'suprimentos',
-        
-        # Links do site
-        'anunciar', 'cadastrar', 'entrar', 'login',
-        'ver mais', 'saiba mais', 'clique'
-    ]
-    
-    # Rejeitar cidades soltas
-    if titulo_lower.count('-') >= 2 and titulo_lower.count(' ') < 3:
+    if any(texto in titulo_lower for texto in textos_interface):
         return False
     
-    tem_ti = any(t in titulo_lower for t in termos_ti)
-    nao_ti = any(t in titulo_lower for t in termos_nao_ti)
-    eh_senior = any(t in titulo_lower for t in termos_senior)
+    # ❌ REJEITAR IMEDIATAMENTE áreas não-TI
+    areas_nao_ti = [
+        # Outras áreas
+        'marketing', 'vendas', 'comercial', 'representante',
+        'administrativo', 'administração', 'secretária', 'recepcion',
+        'financeiro', 'contábil', 'contabil', 'fiscal',
+        'recursos humanos', 'rh ', 'recrutador', 'aquisição de talentos',
+        'farmacêutico', 'farmaceutico', 'enfermeiro', 'médico',
+        'professor', 'educador', 'pedagogo',
+        'arquivologia', 'licitações', 'suprimentos',
+        
+        # Engenharias NÃO relacionadas a TI
+        'engenharia civil', 'engenharia ambiental', 'engenharia química',
+        'engenharia mecânica', 'engenharia elétrica', 'engenharia produção',
+        'ambiental', 'civil', 'mecânica', 'química'
+    ]
     
-    return tem_ti and not nao_ti and not eh_senior
+    # Se menciona área não-TI, rejeitar (MESMO QUE tenha "tecnologia" no nome)
+    if any(area in titulo_lower for area in areas_nao_ti):
+        return False
+    
+    # ✅ PALAVRAS-CHAVE OBRIGATÓRIAS DE TI (precisa ter pelo menos UMA)
+    palavras_ti_obrigatorias = [
+        # TI Geral
+        'ti ', ' ti', 'tecnologia informação', 'tecnologia da informação',
+        'tech ', 'tecnologia',
+        
+        # Desenvolvimento
+        'desenvolvedor', 'developer', 'programador', 'programação',
+        'software', 'sistema', 'web', 'mobile', 'app',
+        
+        # Linguagens/Tecnologias
+        'java', 'python', 'javascript', 'php', 'c#', '.net', 'node',
+        'react', 'angular', 'vue', 'sql', 'database',
+        
+        # Infraestrutura
+        'suporte técnico', 'help desk', 'service desk', 'infraestrutura',
+        'redes', 'cloud', 'devops', 'sysadmin',
+        
+        # Dados
+        'dados', 'data', 'bi ', 'analytics', 'big data',
+        
+        # Outros
+        'qa', 'tester', 'ux', 'ui', 'scrum master', 'product owner',
+        'cyber', 'segurança informação'
+    ]
+    
+    tem_palavra_ti = any(palavra in titulo_lower for palavra in palavras_ti_obrigatorias)
+    
+    if not tem_palavra_ti:
+        return False
+    
+    # ❌ Rejeitar cargos sênior/gerenciais
+    cargos_senior = [
+        'sênior', 'senior', 'sr.', 'sr ', ' sr',
+        'coordenador', 'gerente', 'diretor', 'supervisor',
+        'tech lead', 'principal', 'head', 'chief'
+    ]
+    
+    if any(cargo in titulo_lower for cargo in cargos_senior):
+        return False
+    
+    return True
 
 # ===========================
 # 🔍 BUSCA GENÉRICA
@@ -265,41 +247,52 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
         resultados = []
         vagas_vistas = set()
         
-        for job in vagas[:30]:  # ← Aumentar de 20 para 30
-            try:
-                titulo = job.text.strip()
-                link = job.get_attribute("href")
-                
-                if not titulo or len(titulo) < 8 or not link:
-                    continue
-                
-                # Evitar duplicatas
-                if titulo in vagas_vistas:
-                    continue
-                
-                # Validação RIGOROSA
-                palavras_validas_primary = ['desenvolvedor', 'programador', 'ti', 'tecnologia', 'software', 'suporte técnico', 'help desk', 'estagio', 'estágio']
-                palavras_validas_secondary = ['vaga', 'emprego', 'job', 'analista', 'técnico', 'junior', 'tech', 'developer', 'auxiliar']
-                
-                tem_primary = any(p in titulo.lower() for p in palavras_validas_primary)
-                tem_secondary = any(p in titulo.lower() for p in palavras_validas_secondary)
-                
-                if not (tem_primary or tem_secondary):
-                    continue
-                
-                if filtrar_vaga_ti(titulo, site_nome):
-                    # ✅ VALIDAR LOCALIZAÇÃO
-                    if validar_localizacao(titulo, link):
-                        resultados.append(f"**{titulo}**\n{link}")
-                        vagas_vistas.add(titulo)
-                        log_success(f"{site_nome}: {titulo[:60]}...")
-                    else:
-                        log_info(f"🚫 {site_nome}: Localização incorreta - {titulo[:60]}...")
-                
-                time.sleep(random.uniform(0.2, 0.5))
-                    
-            except Exception:
+        for job in vagas[:30]:
+    try:
+        titulo = job.text.strip()
+        link = job.get_attribute("href")
+        
+        if not titulo or len(titulo) < 8 or not link:
+            continue
+        
+        # ✅ IGNORAR links de navegação/interface
+        links_ignorar = [
+            'javascript:', '#', 'mailto:', 'tel:',
+            '/sobre', '/contato', '/ajuda', '/termos',
+            '/politica', '/privacidade', '/login', '/cadastro'
+        ]
+        
+        if any(ignorar in link.lower() for ignorar in links_ignorar):
+            continue
+        
+        # ✅ Link deve ser de vaga (conter palavras-chave)
+        palavras_url_vaga = ['job', 'vaga', 'emprego', 'oportunidade', 'career']
+        
+        if site_nome != "Catho":  # Catho tem URLs diferentes
+            if not any(palavra in link.lower() for palavra in palavras_url_vaga):
                 continue
+        
+        # Evitar duplicatas
+        if titulo in vagas_vistas:
+            continue
+        
+        # ✅ Título deve ter tamanho razoável (vagas reais)
+        if len(titulo) < 10 or len(titulo) > 150:
+            continue
+        
+        # ✅ APLICAR FILTROS
+        if filtrar_vaga_ti(titulo, site_nome):
+            if validar_localizacao(titulo, link):
+                resultados.append(f"**{titulo}**\n{link}")
+                vagas_vistas.add(titulo)
+                log_success(f"{site_nome}: {titulo[:60]}...")
+            else:
+                log_info(f"🚫 {site_nome}: Localização incorreta - {titulo[:60]}...")
+        
+        time.sleep(random.uniform(0.2, 0.5))
+            
+    except Exception:
+        continue
         
         return resultados
         
@@ -326,13 +319,11 @@ def buscar_todas_plataformas():
     # ===========================
     if SITES_ATIVOS['linkedin']:
         log_info("🌐 Buscando no LinkedIn...")
-        xpaths_linkedin = [
+       xpaths_linkedin = [
     "//a[contains(@href, '/jobs/view/')]",
-    "//div[contains(@class, 'base-card')]//a",
-    "//li[contains(@class, 'jobs-search')]//a",
-    "//div[contains(@class, 'job-search-card')]//a",
-    "//span[contains(@class, 'job-title')]//ancestor::a",
-    "//a"  # ← Fallback: todos os links
+    "//div[contains(@class, 'base-card')]//a[contains(@href, '/jobs/')]",
+    "//li[contains(@class, 'jobs-search')]//a[contains(@href, '/jobs/')]"
+    # ❌ Remover //a genérico
 ]
         
         for termo in TERMOS_BUSCA[:2]:
@@ -352,10 +343,10 @@ def buscar_todas_plataformas():
         log_info("🌐 Buscando no Glassdoor...")
         xpaths_glassdoor = [
     "//a[contains(@data-test, 'job-link')]",
+    "//a[contains(@href, '/job-listing/')]",
     "//a[contains(@class, 'JobCard')]",
-    "//a[contains(@class, 'job')]",
-    "//article//a",
-    "//a"  # ← Fallback
+    "//article[contains(@id, 'job')]//a"
+    # ❌ Remover //a genérico
 ]
         
         count_inicial = len(todas_vagas)
@@ -398,10 +389,10 @@ def buscar_todas_plataformas():
         log_info("🌐 Buscando no InfoJobs...")
         xpaths_infojobs = [
     "//a[contains(@class, 'js-o-link')]",
-    "//a[contains(@class, 'job')]",
+    "//a[contains(@href, '/vaga.xhtml')]",
     "//div[contains(@class, 'element-vaga')]//a",
-    "//article//a",
-    "//a"  # ← Fallback
+    "//article[contains(@class, 'vaga')]//a"
+    # ❌ Remover //a genérico
 ]
         
         count_inicial = len(todas_vagas)
