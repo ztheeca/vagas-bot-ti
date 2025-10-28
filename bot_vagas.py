@@ -248,51 +248,51 @@ def buscar_vagas_site(site_nome, url_template, xpaths, termo_busca, wait_time=5)
         vagas_vistas = set()
         
         for job in vagas[:30]:
-    try:
-        titulo = job.text.strip()
-        link = job.get_attribute("href")
-        
-        if not titulo or len(titulo) < 8 or not link:
-            continue
-        
-        # ✅ IGNORAR links de navegação/interface
-        links_ignorar = [
-            'javascript:', '#', 'mailto:', 'tel:',
-            '/sobre', '/contato', '/ajuda', '/termos',
-            '/politica', '/privacidade', '/login', '/cadastro'
-        ]
-        
-        if any(ignorar in link.lower() for ignorar in links_ignorar):
-            continue
-        
-        # ✅ Link deve ser de vaga (conter palavras-chave)
-        palavras_url_vaga = ['job', 'vaga', 'emprego', 'oportunidade', 'career']
-        
-        if site_nome != "Catho":  # Catho tem URLs diferentes
-            if not any(palavra in link.lower() for palavra in palavras_url_vaga):
+            try:
+                titulo = job.text.strip()
+                link = job.get_attribute("href")
+                
+                if not titulo or len(titulo) < 8 or not link:
+                    continue
+                
+                # ✅ IGNORAR links de navegação/interface
+                links_ignorar = [
+                    'javascript:', '#', 'mailto:', 'tel:',
+                    '/sobre', '/contato', '/ajuda', '/termos',
+                    '/politica', '/privacidade', '/login', '/cadastro'
+                ]
+                
+                if any(ignorar in link.lower() for ignorar in links_ignorar):
+                    continue
+                
+                # ✅ Link deve ser de vaga (conter palavras-chave)
+                palavras_url_vaga = ['job', 'vaga', 'emprego', 'oportunidade', 'career']
+                
+                if site_nome != "Catho":
+                    if not any(palavra in link.lower() for palavra in palavras_url_vaga):
+                        continue
+                
+                # Evitar duplicatas
+                if titulo in vagas_vistas:
+                    continue
+                
+                # ✅ Título deve ter tamanho razoável
+                if len(titulo) < 10 or len(titulo) > 150:
+                    continue
+                
+                # ✅ APLICAR FILTROS
+                if filtrar_vaga_ti(titulo, site_nome):
+                    if validar_localizacao(titulo, link):
+                        resultados.append(f"**{titulo}**\n{link}")
+                        vagas_vistas.add(titulo)
+                        log_success(f"{site_nome}: {titulo[:60]}...")
+                    else:
+                        log_info(f"🚫 {site_nome}: Localização incorreta - {titulo[:60]}...")
+                
+                time.sleep(random.uniform(0.2, 0.5))
+                    
+            except Exception:
                 continue
-        
-        # Evitar duplicatas
-        if titulo in vagas_vistas:
-            continue
-        
-        # ✅ Título deve ter tamanho razoável (vagas reais)
-        if len(titulo) < 10 or len(titulo) > 150:
-            continue
-        
-        # ✅ APLICAR FILTROS
-        if filtrar_vaga_ti(titulo, site_nome):
-            if validar_localizacao(titulo, link):
-                resultados.append(f"**{titulo}**\n{link}")
-                vagas_vistas.add(titulo)
-                log_success(f"{site_nome}: {titulo[:60]}...")
-            else:
-                log_info(f"🚫 {site_nome}: Localização incorreta - {titulo[:60]}...")
-        
-        time.sleep(random.uniform(0.2, 0.5))
-            
-    except Exception:
-        continue
         
         return resultados
         
@@ -315,16 +315,15 @@ def buscar_todas_plataformas():
     todas_vagas = []
     
     # ===========================
-    # LINKEDIN - Formato: ?keywords=TERMO&location=Salvador
+    # LINKEDIN
     # ===========================
     if SITES_ATIVOS['linkedin']:
         log_info("🌐 Buscando no LinkedIn...")
-       xpaths_linkedin = [
-    "//a[contains(@href, '/jobs/view/')]",
-    "//div[contains(@class, 'base-card')]//a[contains(@href, '/jobs/')]",
-    "//li[contains(@class, 'jobs-search')]//a[contains(@href, '/jobs/')]"
-    # ❌ Remover //a genérico
-]
+        xpaths_linkedin = [  # ← 8 espaços de indentação
+            "//a[contains(@href, '/jobs/view/')]",
+            "//div[contains(@class, 'base-card')]//a[contains(@href, '/jobs/')]",
+            "//li[contains(@class, 'jobs-search')]//a[contains(@href, '/jobs/')]"
+        ]
         
         for termo in TERMOS_BUSCA[:2]:
             # LinkedIn: keywords + location + geoId
